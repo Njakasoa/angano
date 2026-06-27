@@ -96,6 +96,9 @@ export class UI {
     const paceSelect = h("select", { class: "field mini2" }, h("option", { value: "rapide" }, "Rapide"), h("option", { value: "normal" }, "Normal"), h("option", { value: "lent" }, "Lent")) as HTMLSelectElement;
     paceSelect.value = "normal";
     const manualChk = h("button", { class: "chip", "data-on": "0", title: "Le narrateur révèle les morts à son rythme (bouton Continuer)" }, "🗣 Morts annoncées") as HTMLButtonElement;
+    const conteurSelect = h("select", { class: "field mini2" }, h("option", { value: "humain" }, "Meneur humain"), h("option", { value: "ia" }, "Conteur IA")) as HTMLSelectElement;
+    conteurSelect.value = "humain";
+    const themeChk = h("button", { class: "chip", "data-on": "0", title: "L'IA invente une légende et l'ambiance pour cette partie (sinon partie classique)" }, "✨ Histoire IA") as HTMLButtonElement;
     const songStep = (d: number) => h("button", { class: "btn ghost step", onclick: () => { songInput.value = String(Math.max(1, Math.min(5, (parseInt(songInput.value) || 1) + d))); pushConfig(); } }, d > 0 ? "+" : "−");
     const songStepper = h("div", { class: "stepper" }, songStep(-1), songInput, songStep(1));
     const startBtn = h("button", { class: "btn big", onclick: o.onStart }, "Lancer la partie") as HTMLButtonElement;
@@ -105,9 +108,10 @@ export class UI {
       h("label", { class: "lbl" }, "Preset"), presetRow,
       h("label", { class: "lbl" }, "Songomby"), songStepper,
       h("label", { class: "lbl" }, "Rôles spéciaux"), roleToggles,
-      h("label", { class: "lbl" }, "Rythme"), h("div", { class: "row" }, paceSelect, manualChk));
+      h("label", { class: "lbl" }, "Rythme"), h("div", { class: "row" }, paceSelect, manualChk),
+      h("label", { class: "lbl" }, "Conteur"), h("div", { class: "row" }, conteurSelect, themeChk));
 
-    const pushConfig = () => o.onConfig({ songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)), roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!), pace: paceSelect.value as "rapide" | "normal" | "lent", manualDeaths: manualChk.getAttribute("data-on") === "1" });
+    const pushConfig = () => o.onConfig({ songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)), roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!), pace: paceSelect.value as "rapide" | "normal" | "lent", manualDeaths: manualChk.getAttribute("data-on") === "1", theme: themeChk.getAttribute("data-on") === "1", conteur: conteurSelect.value as "ia" | "humain" });
     OPTIONAL_ROLES.forEach((r) => {
       roleToggles.append(h("button", { class: "chip on" + (r.team === "songomby" ? " evil" : ""), "data-r": r.id, title: r.desc, onclick: (e: Event) => { (e.currentTarget as HTMLButtonElement).classList.toggle("on"); pushConfig(); } }, r.nameMg));
     });
@@ -120,6 +124,8 @@ export class UI {
     PRESETS.forEach((p) => presetRow.append(h("button", { class: "chip", title: `Recommandé ${p.min} joueurs ou +`, onclick: () => applyPreset(p) }, p.name)));
     paceSelect.onchange = pushConfig;
     manualChk.onclick = () => { const on = manualChk.getAttribute("data-on") !== "1"; manualChk.setAttribute("data-on", on ? "1" : "0"); manualChk.classList.toggle("on", on); pushConfig(); };
+    conteurSelect.onchange = pushConfig;
+    themeChk.onclick = () => { const on = themeChk.getAttribute("data-on") !== "1"; themeChk.setAttribute("data-on", on ? "1" : "0"); themeChk.classList.toggle("on", on); pushConfig(); };
     narBtn.onclick = () => o.onNarrator(narBtn.getAttribute("data-on") !== "1");
 
     this.mount(h("div", { class: "screen center" },
@@ -151,6 +157,9 @@ export class UI {
       roleToggles.querySelectorAll<HTMLButtonElement>(".chip").forEach((b) => b.classList.toggle("on", m.config.roles.includes(b.getAttribute("data-r")!)));
       paceSelect.value = m.config.pace ?? "normal";
       const md = !!m.config.manualDeaths; manualChk.setAttribute("data-on", md ? "1" : "0"); manualChk.classList.toggle("on", md);
+      conteurSelect.value = m.config.conteur ?? "humain";
+      const th = !!m.config.theme; themeChk.setAttribute("data-on", th ? "1" : "0"); themeChk.classList.toggle("on", th);
+      narBtn.style.display = m.config.conteur === "ia" ? "none" : "";
       startBtn.style.display = isHost ? "" : "none";
       const seats = m.players.filter((p) => p.id !== m.narratorId).length;
       hint.textContent = isHost ? (seats < 4 ? `Encore ${4 - seats} joueur(s) (hors narrateur).` : "") : "En attente de l'hôte…";
@@ -228,12 +237,13 @@ export class UI {
 
   setPanel(...nodes: (El | string)[]) { const p = this.panelEl; if (!p) return; p.innerHTML = ""; p.append(...nodes); }
 
-  roleCard(role: RoleInfo, reveal = false): El {
+  roleCard(role: RoleInfo, reveal = false, epithet?: string): El {
     const teamCls = role.team === "songomby" ? "evil" : "good";
     return h("div", { class: "rolecard " + teamCls + (reveal ? " reveal" : "") },
       h("div", { class: "rc-img", style: `background-image:url(${imageUrl(roleDef(role.roleId).asset)})` }),
       h("div", { class: "rc-body" },
         h("div", { class: "rc-name" }, role.nameMg),
+        epithet ? h("div", { class: "rc-epithet" }, "« " + epithet + " »") : "",
         h("div", { class: "rc-desc" }, role.desc),
         h("div", { class: "rc-goal" }, role.team === "songomby" ? "🎯 Élimine le village sans te faire prendre." : "🎯 Démasque et élimine les Songomby."),
       ),

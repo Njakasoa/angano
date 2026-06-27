@@ -4,12 +4,15 @@ import type { Team } from "./protocol.ts";
 export interface RoleDef { id: string; nameMg: string; desc: string; team: Team; asset: string; optional: boolean }
 
 export const ROLES: Record<string, RoleDef> = {
-  mponina: { id: "mponina", nameMg: "Mponina", team: "village", asset: "introduction_phase", optional: false, desc: "Villageois sans pouvoir. Démasque les Songomby et vote le jour." },
-  songomby: { id: "songomby", nameMg: "Songomby", team: "songomby", asset: "loup_garou_petite_fille_phase", optional: false, desc: "Chaque nuit, dévore une victime avec les autres Songomby." },
-  mpisikidy: { id: "mpisikidy", nameMg: "Mpisikidy", team: "village", asset: "voyante_phase", optional: true, desc: "Chaque nuit, sonde le rôle d'un joueur — le sikidy révèle la vérité." },
-  ombiasy: { id: "ombiasy", nameMg: "Ombiasy", team: "village", asset: "sorciere_phase", optional: true, desc: "Possède 1 remède (sauver la victime) et 1 poison (tuer), une fois chacun." },
-  cupidon: { id: "cupidon", nameMg: "Cupidon", team: "village", asset: "cupidon_phase", optional: true, desc: "La 1re nuit, lie deux amoureux. Si l'un meurt, l'autre le suit." },
-  mpihaza: { id: "mpihaza", nameMg: "Mpihaza", team: "village", asset: "vote_phase", optional: true, desc: "En mourant, il décoche une dernière flèche et emporte un joueur." },
+  mponina: { id: "mponina", nameMg: "Mponina", team: "village", asset: "introduction_phase", optional: false, desc: "Aucun pouvoir nocturne. Observe, débat et vote pour chasser les monstres." },
+  songomby: { id: "songomby", nameMg: "Songomby", team: "songomby", asset: "loup_garou_petite_fille_phase", optional: false, desc: "Chaque nuit, les Songomby choisissent ensemble une victime à dévorer." },
+  mpisikidy: { id: "mpisikidy", nameMg: "Mpisikidy", team: "village", asset: "voyante_phase", optional: true, desc: "Chaque nuit, le sikidy te révèle le rôle d'un joueur — mais les traces peuvent brouiller la lecture." },
+  ombiasy: { id: "ombiasy", nameMg: "Ombiasy", team: "village", asset: "sorciere_phase", optional: true, desc: "Un remède (sauver la victime) et un poison (tuer), chacun utilisable une seule fois." },
+  mpihaza: { id: "mpihaza", nameMg: "Mpihaza", team: "village", asset: "vote_phase", optional: true, desc: "Quand tu meurs, tu décoches une dernière flèche et emportes un joueur." },
+  zazavavindrano: { id: "zazavavindrano", nameMg: "Zazavavindrano", team: "village", asset: "cupidon_phase", optional: true, desc: "Chaque nuit, pose un fady d'eau sur un joueur. Si une force hostile le trouble, tu sentiras sa trace." },
+  kalanoro: { id: "kalanoro", nameMg: "Kalanoro", team: "village", asset: "voleur_phase", optional: true, desc: "Chaque nuit, lis les pas d'un joueur : tu sauras s'il a quitté sa place cette nuit." },
+  kinoly: { id: "kinoly", nameMg: "Kinoly", team: "songomby", asset: "loup_garou_petite_fille_phase", optional: true, desc: "Tu chasses avec les Songomby, mais les signes te font paraître innocent à la divination." },
+  mpamosavy: { id: "mpamosavy", nameMg: "Mpamosavy", team: "songomby", asset: "sorciere_phase", optional: true, desc: "Chaque nuit, tu maudis un joueur : son pouvoir nocturne échoue." },
 };
 
 export const OPTIONAL_ROLES = Object.values(ROLES).filter((r) => r.optional);

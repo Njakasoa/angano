@@ -21,6 +21,8 @@ export class Game {
   private wolfVictim: string | null = null; private wolfIds: string[] = [];
   private voteTally: Record<string, number> = {};
   private deadReveal: Record<string, string> = {};
+  private dying: string[] = [];
+  private roleReveal = false;
   private journal: string[] = [];
   private leaving = false;
   private currentName = ""; private currentRoom = ""; private reconnectTries = 0;
@@ -78,15 +80,19 @@ export class Game {
         this.lobby.render(m);
       });
 
-      client.on("role", (m) => { this.role = m.role; this.render(); });
+      client.on("role", (m) => { this.role = m.role; this.roleReveal = true; this.render(); });
       client.on("narrator", (m) => { this.narratorPlayers = m.players; this.log = m.log; this.render(); });
 
       client.on("phase", (m) => {
+        const prev = this.phase;
         if (!this.ui.inStage()) this.ui.enterStage();
         this.phase = m.phase; this.prompt = null; this.witchMode = false;
         if (m.phase !== "vote") this.voteTally = {};
         if (m.phase !== "aube") this.deadReveal = {};
         this.amb.play(m.audioKey); this.ui.setMuted(this.amb.isMuted);
+        // headline flourish on day phases + once when the night falls (not on every night sub-step)
+        const headline = m.phase === "debat" || m.phase === "vote" || (isNight(m.phase) && !isNight(prev));
+        if (headline && prev !== m.phase) this.ui.phaseIntro(m.imageKey, m.title, m.text);
         this.ui.setBanner(m.imageKey, m.title, m.text, m.day);
         this.ui.setTimer(m.durationMs);
         this.render();
@@ -98,7 +104,11 @@ export class Game {
       client.on("fadyTrace", (m) => { this.ui.toast(`Le fady d'eau sur ${this.nameOf(m.targetId)} a été troublé — une présence hostile est venue.`); this.note(`💧 fady troublé sur ${this.nameOf(m.targetId)} (présence hostile)`); });
       client.on("blocked", () => { this.ui.toast("Une malédiction a brouillé ton pouvoir cette nuit."); this.note("🚫 ton pouvoir a été bloqué cette nuit"); });
       client.on("wolves", (m) => { this.wolfIds = m.wolfIds; this.wolfVictim = m.victimId; this.render(); });
-      client.on("deaths", (m) => { for (const r of m.reveals) this.deadReveal[r.id] = r.roleId; this.render(); });
+      client.on("deaths", (m) => {
+        for (const r of m.reveals) this.deadReveal[r.id] = r.roleId;
+        this.dying = m.ids; this.render();
+        setTimeout(() => { this.dying = []; this.render(); }, 800);
+      });
       client.on("voteState", (m) => { this.voteTally = {}; for (const t of m.tally) this.voteTally[t.id] = t.votes; this.render(); });
       client.on("voteResult", (m) => { this.ui.toast(m.eliminatedId ? `${this.nameOf(m.eliminatedId)} est éliminé (${m.nameMg}).` : "Personne n'est éliminé."); });
       client.on("state", (m) => { this.players = m.players; this.phase = m.phase; this.render(); });
@@ -106,7 +116,9 @@ export class Game {
       client.on("finish", (m) => {
         this.phase = "finished"; this.amb.play("revelation");
         const reveal: Record<string, string> = {}; m.reveal.forEach((r) => (reveal[r.id] = r.roleId));
-        this.ui.setBanner(m.winner === "songomby" ? "scene_victory_songomby" : "scene_victory_village", winnerTitle(m.winner), m.text, 0);
+        const vimg = m.winner === "songomby" ? "scene_victory_songomby" : "scene_victory_village";
+        this.ui.phaseIntro(vimg, winnerTitle(m.winner), m.text);
+        this.ui.setBanner(vimg, winnerTitle(m.winner), m.text, 0);
         this.ui.setVillage(this.players, this.selfId, this.narratorId, { roles: reveal });
         const h = this.ui.el;
         this.ui.setPanel(
@@ -139,20 +151,22 @@ export class Game {
       onPick: (id) => this.pick(id),
       votes: this.phase === "vote" ? this.voteTally : undefined,
       roles: this.amNarrator ? Object.fromEntries(this.narratorPlayers.map((p) => [p.id, p.roleId ?? "mponina"])) : undefined,
-      reveal: this.phase === "aube" ? this.deadReveal : undefined,
+      reveal: this.phase === "aube" || this.dying.length ? this.deadReveal : undefined,
+      dying: this.dying,
     });
 
     if (this.amNarrator) {
+      const advLabel = this.phase === "aube" ? "🗣 Révéler / Continuer ▶" : this.phase === "debat" ? "Lancer le vote ▶" : "Continuer ▶";
       this.ui.setPanel(
         h("div", { class: "nar-title" }, "🎙️ Vue du narrateur"),
         h("div", { class: "nar-log" }, ...this.log.slice(-8).map((l) => h("div", {}, l))),
-        h("button", { class: "btn big", onclick: () => this.client?.nextPhase() }, "Continuer ▶"),
+        h("button", { class: "btn big", onclick: () => this.client?.nextPhase() }, advLabel),
       );
       return;
     }
 
     const nodes: (HTMLElement | string)[] = [];
-    if (this.role) nodes.push(this.ui.roleCard(this.role));
+    if (this.role) { nodes.push(this.ui.roleCard(this.role, this.roleReveal)); this.roleReveal = false; }
     if (this.wolfIds.length > 1 && this.role?.team === "songomby" && (this.phase === "songomby")) {
       nodes.push(h("div", { class: "hint" }, "Tes complices : " + this.wolfIds.filter((w) => w !== this.selfId).map((w) => this.nameOf(w)).join(", ")));
     }
@@ -210,5 +224,7 @@ export class Game {
   private nameOf(id: string) { return this.players.find((p) => p.id === id)?.name ?? this.narratorPlayers.find((p) => p.id === id)?.name ?? "?"; }
 }
 
+const NIGHT_PHASES: Phase[] = ["zazavavindrano", "mpamosavy", "mpisikidy", "kalanoro", "songomby", "ombiasy"];
+function isNight(p: Phase): boolean { return NIGHT_PHASES.includes(p); }
 function randomCode(): string { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; return Array.from({ length: 4 }, () => a[(Math.random() * a.length) | 0]).join(""); }
 function winnerTitle(w: string): string { return w === "village" ? "Le village l'emporte 🎉" : w === "songomby" ? "Les Songomby l'emportent 🐺" : "Fin de partie"; }

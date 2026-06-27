@@ -18,3 +18,12 @@ export const ROLES: Record<string, RoleDef> = {
 export const OPTIONAL_ROLES = Object.values(ROLES).filter((r) => r.optional);
 export const roleDef = (id: string): RoleDef => ROLES[id] ?? ROLES.mponina!;
 export const imageUrl = (stem: string) => `/assets/images/${stem}.png`;
+
+/** Lobby presets (host picks one to fill the role config quickly). */
+export interface Preset { name: string; songomby: number; roles: string[]; min: number }
+export const PRESETS: Preset[] = [
+  { name: "Classique", songomby: 1, roles: ["mpisikidy", "ombiasy", "mpihaza"], min: 5 },
+  { name: "Fady & Traces", songomby: 1, roles: ["mpisikidy", "ombiasy", "mpihaza", "zazavavindrano", "kalanoro"], min: 6 },
+  { name: "Esprits", songomby: 1, roles: ["mpisikidy", "ombiasy", "zazavavindrano", "kalanoro", "mpihaza"], min: 7 },
+  { name: "Nuit dangereuse", songomby: 1, roles: ["mpisikidy", "ombiasy", "zazavavindrano", "kalanoro", "kinoly", "mpamosavy", "mpihaza"], min: 8 },
+];

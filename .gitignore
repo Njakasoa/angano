@@ -4,3 +4,6 @@ dist/
 *.log
 .vscode/
 .idea/
+
+# Windows download metadata
+*:Zone.Identifier

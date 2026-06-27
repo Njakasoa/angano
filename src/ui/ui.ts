@@ -29,7 +29,7 @@ export class UI {
   private screen?: El;
   // persistent stage refs
   private bannerImg?: El; private bannerTitle?: El; private bannerText?: El; private dayEl?: El;
-  private villageEl?: El; private panelEl?: El; private muteBtn?: HTMLButtonElement;
+  private villageEl?: El; private panelEl?: El; private muteBtn?: HTMLButtonElement; private timerBar?: El;
   onToggleMute?: () => void;
 
   constructor(private root: El) {}
@@ -70,7 +70,7 @@ export class UI {
 
     const pushConfig = () => o.onConfig({ songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)), roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!) });
     OPTIONAL_ROLES.forEach((r) => {
-      roleToggles.append(h("button", { class: "chip on", "data-r": r.id, title: r.desc, onclick: (e: Event) => { (e.currentTarget as HTMLButtonElement).classList.toggle("on"); pushConfig(); } }, r.nameMg));
+      roleToggles.append(h("button", { class: "chip on" + (r.team === "songomby" ? " evil" : ""), "data-r": r.id, title: r.desc, onclick: (e: Event) => { (e.currentTarget as HTMLButtonElement).classList.toggle("on"); pushConfig(); } }, r.nameMg));
     });
     songInput.onchange = pushConfig;
     narBtn.onclick = () => o.onNarrator(narBtn.getAttribute("data-on") !== "1");
@@ -116,16 +116,27 @@ export class UI {
     this.bannerText = h("div", { class: "phase-text" });
     this.dayEl = h("div", { class: "day-badge" });
     this.muteBtn = h("button", { class: "mute", onclick: () => this.onToggleMute?.() }, "🔊") as HTMLButtonElement;
+    this.timerBar = h("div", { class: "timer-bar hidden" });
     this.villageEl = h("div", { class: "village" });
     this.panelEl = h("div", { class: "panel" });
     this.mount(h("div", { class: "screen stage" },
-      h("div", { class: "banner" }, this.bannerImg, this.dayEl, this.muteBtn, h("div", { class: "banner-txt" }, this.bannerTitle, this.bannerText)),
+      h("div", { class: "banner" }, this.bannerImg, this.dayEl, this.muteBtn, h("div", { class: "banner-txt" }, this.bannerTitle, this.bannerText), this.timerBar),
       this.villageEl,
       this.panelEl,
     ));
   }
   inStage() { return !!this.villageEl; }
-  leaveStage() { this.bannerImg = this.villageEl = this.panelEl = undefined; }
+  leaveStage() { this.bannerImg = this.villageEl = this.panelEl = this.timerBar = undefined; }
+
+  /** Animate the phase countdown bar (depletes over `ms`). 0 hides it. */
+  setTimer(ms: number) {
+    const b = this.timerBar; if (!b) return;
+    if (!ms || ms <= 0) { b.classList.add("hidden"); return; }
+    b.classList.remove("hidden");
+    b.style.transition = "none"; b.style.transform = "scaleX(1)";
+    void b.offsetWidth; // force reflow so the next transition runs
+    b.style.transition = `transform ${ms}ms linear`; b.style.transform = "scaleX(0)";
+  }
 
   setBanner(imageKey: string, title: string, text: string, day: number) {
     if (this.bannerImg) this.bannerImg.style.backgroundImage = `url(${imageUrl(imageKey)})`;
@@ -163,7 +174,6 @@ export class UI {
       h("div", { class: "rc-body" },
         h("div", { class: "rc-name" }, role.nameMg),
         h("div", { class: "rc-desc" }, role.desc),
-        role.loverName ? h("div", { class: "rc-lover" }, `❤ Amoureux de ${role.loverName}`) : "",
       ),
     );
   }

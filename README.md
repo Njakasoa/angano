@@ -9,14 +9,24 @@ la partie. Thème inspiré du folklore malgache (rôles aux noms malagasy).
 > **placeholders recyclés** — de vrais assets « monstres du folklore malgache »
 > viendront plus tard.
 
-## Rôles (MVP)
+## Rôles (MVP — identité « fady / traces / esprits », voir `docs/roles-folklore-finalise-v2.md`)
 
+**Village**
 - **Mponina** — villageois sans pouvoir.
-- **Songomby** — le monstre : dévore une victime chaque nuit, en meute.
-- **Mpisikidy** — sonde le rôle d'un joueur chaque nuit.
-- **Ombiasy** — 1 remède (sauver) + 1 poison (tuer).
-- **Cupidon** — lie deux amoureux la 1re nuit.
+- **Mpisikidy** — sonde le rôle d'un joueur chaque nuit (le sikidy peut être brouillé).
+- **Ombiasy** — 1 remède (sauver) + 1 poison (tuer), une fois chacun.
 - **Mpihaza** — en mourant, emporte un joueur.
+- **Zazavavindrano** — pose un fady d'eau sur un joueur ; si une force hostile le trouble, elle laisse une trace.
+- **Kalanoro** — lit les pas d'un joueur : sait s'il a quitté sa place cette nuit.
+
+**Songomby (maléfiques)**
+- **Songomby** — le monstre : dévore une victime chaque nuit, en meute.
+- **Kinoly** — chasse avec les Songomby, mais paraît innocent à la divination.
+- **Mpamosavy** — maudit un joueur chaque nuit : son pouvoir nocturne échoue.
+
+> La nuit est **collectée puis résolue** dans un ordre fixe (marques → blocages →
+> infos → morts → sauvetages → traces), côté serveur. La mécanique « amoureux »
+> (Cupidon) a été retirée. Rôles à venir : Tromba, Kokolampo, Fanany, Trimobe, Lalomena.
 
 Le **narrateur** est un siège à part (ne joue pas) : il voit tout, lance l'ambiance
 et rythme les phases — mais c'est le **serveur** qui résout toute la logique

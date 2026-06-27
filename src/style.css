@@ -45,6 +45,8 @@ body {
 .role-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { padding: 8px 13px; border-radius: 999px; border: 2px solid var(--line); background: #161d33; font: inherit; font-weight: 800; color: var(--muted); cursor: pointer; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.evil { border-color: #5a2230; }
+.chip.evil.on { background: var(--evil); border-color: var(--evil); color: #2a0008; }
 .hint { color: var(--muted); font-weight: 700; text-align: center; padding: 6px 0; }
 
 /* ── in-game stage ── */
@@ -57,6 +59,8 @@ body {
 .phase-text { color: #dfe6ff; font-weight: 700; text-shadow: 0 1px 8px #000; }
 .day-badge { position: absolute; top: 10px; left: 12px; z-index: 1; background: rgba(0,0,0,.4); padding: 5px 11px; border-radius: 999px; font-weight: 800; font-size: .8rem; }
 .mute { position: absolute; top: 10px; right: 12px; z-index: 1; background: rgba(0,0,0,.4); border: none; color: #fff; font-size: 1.1rem; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; }
+.timer-bar { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; z-index: 2; background: linear-gradient(90deg, var(--gold), var(--accent)); transform-origin: left; }
+.timer-bar.hidden { opacity: 0; }
 
 .village { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; padding: 14px; align-content: start; overflow-y: auto; }
 .pcard { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 12px 6px; text-align: center; transition: transform .08s; }
@@ -87,3 +91,9 @@ body {
 .finish-banner.good { color: var(--good); } .finish-banner.evil { color: var(--evil); }
 
 .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--gold); color: #1a1400; font-weight: 800; padding: 10px 18px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 50; max-width: 90vw; text-align: center; }
+
+/* ── player's private night journal ── */
+.journal { background: #0f1424; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 10px; }
+.journal-title { font-weight: 800; font-size: .78rem; color: var(--gold); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.journal-item { font-weight: 700; font-size: .86rem; color: #dfe6ff; padding: 3px 0; border-top: 1px solid #1b2238; }
+.journal-item:first-of-type { border-top: none; }

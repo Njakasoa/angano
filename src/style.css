@@ -98,3 +98,50 @@ body {
 .journal-title { font-weight: 800; font-size: .78rem; color: var(--gold); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
 .journal-item { font-weight: 700; font-size: .86rem; color: #dfe6ff; padding: 3px 0; border-top: 1px solid #1b2238; }
 .journal-item:first-of-type { border-top: none; }
+
+/* ── motion: phase intro, deaths, reveals ── */
+.phase-intro { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; cursor: pointer; background-size: cover; background-position: center; }
+.phase-intro::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(11,14,26,.5), rgba(11,14,26,.82)); }
+.phase-intro > * { position: relative; z-index: 1; }
+.pi-title { font-family: "Cinzel", serif; font-weight: 800; font-size: 2rem; color: var(--moon); text-shadow: 0 2px 16px #000; }
+.pi-text { color: #dfe6ff; font-weight: 700; margin-top: 8px; text-shadow: 0 1px 8px #000; max-width: 30ch; }
+.phase-intro.in { animation: piIn .5s ease both; }
+.phase-intro.out { animation: piOut .4s ease both; }
+@keyframes piIn { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }
+@keyframes piOut { from { opacity: 1; } to { opacity: 0; } }
+
+.pcard.dying { animation: dieShake .7s ease both; z-index: 1; }
+@keyframes dieShake { 0%,100% { transform: translateX(0); } 12% { transform: translateX(-5px) rotate(-2deg); } 26% { transform: translateX(5px) rotate(2deg); } 42% { transform: translateX(-4px); } 60% { transform: translateX(3px); } 80% { transform: translateX(-1px); filter: grayscale(1) brightness(.65); } }
+
+.rolecard.reveal { animation: cardReveal .6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes cardReveal { from { opacity: 0; transform: perspective(700px) rotateX(26deg) translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+
+.banner-img { animation: kenburns 20s ease-in-out infinite alternate; }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img { animation: none !important; }
+  .timer-bar { transition: none !important; }
+}
+
+/* ── onboarding & accessibilité ── */
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+.btn.small { min-height: 40px; }
+.card.scroll { max-height: 86dvh; overflow-y: auto; text-align: left; }
+.card.scroll .brand, .card.scroll > .tag { text-align: center; display: block; }
+.rules-sec { background: #0f1424; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.rs-t { font-weight: 800; color: var(--moon); }
+.rs-d { color: var(--muted); font-weight: 700; font-size: .9rem; margin-top: 3px; }
+.rc-goal { color: var(--gold); font-weight: 800; font-size: .82rem; margin-top: 4px; }
+.codex { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.codex-tile { display: flex; gap: 10px; align-items: center; background: #0f1424; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
+.codex-tile.evil { border-color: var(--evil); } .codex-tile.good { border-color: var(--good); }
+.ct-img { width: 56px; height: 56px; border-radius: 10px; background-size: cover; background-position: center; flex: 0 0 auto; }
+.ct-name { font-family: "Cinzel", serif; font-weight: 800; }
+.ct-desc { color: var(--muted); font-weight: 700; font-size: .82rem; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.presets .chip { background: #161d33; }
+
+/* ── narrator & pacing ── */
+.field.mini2 { width: auto; padding: 9px 11px; }
+.pc-roleimg { width: 100%; height: 30px; border-radius: 8px; background-size: cover; background-position: center 22%; margin: 4px 0 2px; }

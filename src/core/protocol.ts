@@ -12,7 +12,8 @@ export type Phase =
 export interface PlayerPublic { id: string; name: string; alive: boolean; isNarrator: boolean }
 export interface NarratorPlayer extends PlayerPublic { roleId?: string }
 export interface RoleInfo { roleId: string; team: Team; nameMg: string; desc: string }
-export interface GameConfig { songomby: number; roles: string[] }
+export type Pace = "rapide" | "normal" | "lent";
+export interface GameConfig { songomby: number; roles: string[]; pace?: Pace; manualDeaths?: boolean }
 
 export type AnganoClientMsg =
   | { k: "hello"; name: string }

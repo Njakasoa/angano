@@ -1,5 +1,5 @@
 import type { PlayerPublic, RoleInfo, GameConfig } from "../core/protocol.ts";
-import { OPTIONAL_ROLES, roleDef, imageUrl } from "../core/roles.ts";
+import { ROLES, OPTIONAL_ROLES, PRESETS, roleDef, imageUrl } from "../core/roles.ts";
 
 type El = HTMLElement;
 function h(tag: string, props: Record<string, unknown> = {}, ...kids: (El | string)[]): El {
@@ -23,6 +23,7 @@ export interface VillageOpts {
   votes?: Record<string, number>;     // vote tallies
   roles?: Record<string, string>;     // id -> roleId (narrator / finish reveal)
   reveal?: Record<string, string>;    // id -> roleId revealed dead
+  dying?: string[];                   // ids currently animating their death
 }
 
 export class UI {
@@ -50,9 +51,39 @@ export class UI {
         h("button", { class: "btn big", onclick: () => go(null) }, "Créer une partie"),
         h("div", { class: "or" }, "ou rejoindre avec un code"),
         h("div", { class: "row" }, codeInput, h("button", { class: "btn ghost", onclick: () => go(codeInput.value.trim().toUpperCase() || null) }, "Rejoindre")),
+        h("div", { class: "row center" },
+          h("button", { class: "btn ghost small", onclick: () => this.showRules(() => this.showMenu(onPlay)) }, "Comment jouer ?"),
+          h("button", { class: "btn ghost small", onclick: () => this.showCodex(() => this.showMenu(onPlay)) }, "Les rôles")),
         h("div", { class: "foot" }, "Jeu de déduction · 4 joueurs + narrateur recommandés"),
       ),
     ));
+  }
+
+  // ── onboarding ──
+  showRules(onBack: () => void) {
+    const sec = (t: string, d: string) => h("div", { class: "rules-sec" }, h("div", { class: "rs-t" }, t), h("div", { class: "rs-d" }, d));
+    this.mount(h("div", { class: "screen center" },
+      h("div", { class: "card wide scroll" },
+        h("div", { class: "brand small" }, "COMMENT JOUER"),
+        sec("🌙 La nuit", "Les rôles agissent en secret, l'un après l'autre. Les Songomby choisissent ensemble une victime à dévorer."),
+        sec("🌅 L'aube", "Le village se réveille et découvre qui est mort cette nuit — et le rôle de la victime."),
+        sec("☀️ Le jour", "Tout le monde débat à voix haute, puis vote pour éliminer un suspect. L'éliminé révèle son rôle."),
+        sec("🎯 Le but", "Le village l'emporte en éliminant tous les Songomby. Les Songomby gagnent dès qu'ils égalent le nombre de villageois."),
+        sec("🎙️ Le narrateur", "Un siège à part (il ne joue pas) : il voit tout, lance l'ambiance et rythme les phases. Le serveur garde l'autorité."),
+        h("button", { class: "btn big", onclick: onBack }, "← Retour"),
+      )));
+  }
+  showCodex(onBack: () => void) {
+    const tiles = Object.values(ROLES).map((r) => h("div", { class: "codex-tile " + (r.team === "songomby" ? "evil" : "good") },
+      h("div", { class: "ct-img", style: `background-image:url(${imageUrl(r.asset)})` }),
+      h("div", { class: "ct-body" }, h("div", { class: "ct-name" }, r.nameMg), h("div", { class: "ct-desc" }, r.desc))));
+    this.mount(h("div", { class: "screen center" },
+      h("div", { class: "card wide scroll" },
+        h("div", { class: "brand small" }, "LES RÔLES"),
+        h("div", { class: "tag" }, "Bleu = village · Rouge = Songomby"),
+        h("div", { class: "codex" }, ...tiles),
+        h("button", { class: "btn big", onclick: onBack }, "← Retour"),
+      )));
   }
 
   // ── lobby ──
@@ -62,17 +93,31 @@ export class UI {
     const narBtn = h("button", { class: "btn ghost small" }, "Devenir narrateur") as HTMLButtonElement;
     const songInput = h("input", { class: "field mini", type: "number", min: "1", max: "5", value: "1" }) as HTMLInputElement;
     const roleToggles = h("div", { class: "role-toggles" });
+    const paceSelect = h("select", { class: "field mini2" }, h("option", { value: "rapide" }, "Rapide"), h("option", { value: "normal" }, "Normal"), h("option", { value: "lent" }, "Lent")) as HTMLSelectElement;
+    paceSelect.value = "normal";
+    const manualChk = h("button", { class: "chip", "data-on": "0", title: "Le narrateur révèle les morts à son rythme (bouton Continuer)" }, "🗣 Morts annoncées") as HTMLButtonElement;
     const startBtn = h("button", { class: "btn big", onclick: o.onStart }, "Lancer la partie") as HTMLButtonElement;
     const hint = h("div", { class: "tag" }, "");
+    const presetRow = h("div", { class: "presets" });
     const cfg = h("div", { class: "config" },
+      h("label", { class: "lbl" }, "Preset"), presetRow,
       h("label", { class: "lbl" }, "Songomby"), songInput,
-      h("label", { class: "lbl" }, "Rôles spéciaux"), roleToggles);
+      h("label", { class: "lbl" }, "Rôles spéciaux"), roleToggles,
+      h("label", { class: "lbl" }, "Rythme"), h("div", { class: "row" }, paceSelect, manualChk));
 
-    const pushConfig = () => o.onConfig({ songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)), roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!) });
+    const pushConfig = () => o.onConfig({ songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)), roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!), pace: paceSelect.value as "rapide" | "normal" | "lent", manualDeaths: manualChk.getAttribute("data-on") === "1" });
     OPTIONAL_ROLES.forEach((r) => {
       roleToggles.append(h("button", { class: "chip on" + (r.team === "songomby" ? " evil" : ""), "data-r": r.id, title: r.desc, onclick: (e: Event) => { (e.currentTarget as HTMLButtonElement).classList.toggle("on"); pushConfig(); } }, r.nameMg));
     });
     songInput.onchange = pushConfig;
+    const applyPreset = (p: typeof PRESETS[number]) => {
+      songInput.value = String(p.songomby);
+      roleToggles.querySelectorAll<HTMLButtonElement>(".chip").forEach((b) => b.classList.toggle("on", p.roles.includes(b.getAttribute("data-r")!)));
+      pushConfig();
+    };
+    PRESETS.forEach((p) => presetRow.append(h("button", { class: "chip", title: `Recommandé ${p.min} joueurs ou +`, onclick: () => applyPreset(p) }, p.name)));
+    paceSelect.onchange = pushConfig;
+    manualChk.onclick = () => { const on = manualChk.getAttribute("data-on") !== "1"; manualChk.setAttribute("data-on", on ? "1" : "0"); manualChk.classList.toggle("on", on); pushConfig(); };
     narBtn.onclick = () => o.onNarrator(narBtn.getAttribute("data-on") !== "1");
 
     this.mount(h("div", { class: "screen center" },
@@ -102,6 +147,8 @@ export class UI {
       cfg.style.display = isHost ? "" : "none";
       songInput.value = String(m.config.songomby);
       roleToggles.querySelectorAll<HTMLButtonElement>(".chip").forEach((b) => b.classList.toggle("on", m.config.roles.includes(b.getAttribute("data-r")!)));
+      paceSelect.value = m.config.pace ?? "normal";
+      const md = !!m.config.manualDeaths; manualChk.setAttribute("data-on", md ? "1" : "0"); manualChk.classList.toggle("on", md);
       startBtn.style.display = isHost ? "" : "none";
       const seats = m.players.filter((p) => p.id !== m.narratorId).length;
       hint.textContent = isHost ? (seats < 4 ? `Encore ${4 - seats} joueur(s) (hors narrateur).` : "") : "En attente de l'hôte…";
@@ -138,6 +185,17 @@ export class UI {
     b.style.transition = `transform ${ms}ms linear`; b.style.transform = "scaleX(0)";
   }
 
+  /** Full-screen phase flourish: the phase art + title, then it dissolves. Tap to skip. */
+  phaseIntro(imageKey: string, title: string, text: string) {
+    const el = h("div", { class: "phase-intro in", style: `background-image:url(${imageUrl(imageKey)})` },
+      h("div", { class: "pi-title" }, title),
+      text ? h("div", { class: "pi-text" }, text) : "");
+    const close = () => { if (!el.isConnected) return; el.classList.remove("in"); el.classList.add("out"); setTimeout(() => el.remove(), 400); };
+    el.addEventListener("click", close);
+    this.root.append(el);
+    setTimeout(close, 1500);
+  }
+
   setBanner(imageKey: string, title: string, text: string, day: number) {
     if (this.bannerImg) this.bannerImg.style.backgroundImage = `url(${imageUrl(imageKey)})`;
     if (this.bannerTitle) this.bannerTitle.textContent = title;
@@ -153,11 +211,12 @@ export class UI {
       const clickable = opts.targets?.includes(p.id);
       const roleId = opts.reveal?.[p.id] ?? opts.roles?.[p.id];
       const card = h("div", {
-        class: ["pcard", !p.alive ? "dead" : "", p.id === selfId ? "me" : "", clickable ? "target" : "", opts.selected?.includes(p.id) ? "sel" : ""].filter(Boolean).join(" "),
+        class: ["pcard", !p.alive ? "dead" : "", p.id === selfId ? "me" : "", clickable ? "target" : "", opts.selected?.includes(p.id) ? "sel" : "", opts.dying?.includes(p.id) ? "dying" : ""].filter(Boolean).join(" "),
         ...(clickable ? { onclick: () => opts.onPick?.(p.id) } : {}),
       },
         h("div", { class: "pc-ava" }, p.alive ? avatarFor(p.id) : "✝"),
         h("div", { class: "pc-name" }, p.name + (p.id === selfId ? " (toi)" : "")),
+        roleId ? h("div", { class: "pc-roleimg", style: `background-image:url(${imageUrl(roleDef(roleId).asset)})` }) : "",
         roleId ? h("div", { class: "pc-role" }, roleDef(roleId).nameMg) : "",
         opts.votes?.[p.id] ? h("div", { class: "pc-votes" }, "🗳 " + opts.votes[p.id]) : "",
       );
@@ -167,13 +226,14 @@ export class UI {
 
   setPanel(...nodes: (El | string)[]) { const p = this.panelEl; if (!p) return; p.innerHTML = ""; p.append(...nodes); }
 
-  roleCard(role: RoleInfo): El {
+  roleCard(role: RoleInfo, reveal = false): El {
     const teamCls = role.team === "songomby" ? "evil" : "good";
-    return h("div", { class: "rolecard " + teamCls },
+    return h("div", { class: "rolecard " + teamCls + (reveal ? " reveal" : "") },
       h("div", { class: "rc-img", style: `background-image:url(${imageUrl(roleDef(role.roleId).asset)})` }),
       h("div", { class: "rc-body" },
         h("div", { class: "rc-name" }, role.nameMg),
         h("div", { class: "rc-desc" }, role.desc),
+        h("div", { class: "rc-goal" }, role.team === "songomby" ? "🎯 Élimine le village sans te faire prendre." : "🎯 Démasque et élimine les Songomby."),
       ),
     );
   }

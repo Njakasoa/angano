@@ -29,12 +29,14 @@ export class Game {
 
   start() {
     this.ui.onToggleMute = () => { this.amb.setMuted(!this.amb.isMuted); this.ui.setMuted(this.amb.isMuted); };
-    this.menu();
+    const active = readActive(); // page was reloaded mid-game → rejoin automatically
+    if (active) this.startConnect(active.name, active.room); else this.menu();
   }
   private get amNarrator() { return this.narratorId === this.selfId; }
 
   private menu() {
     this.leaving = true; this.client?.close(); this.client = undefined; this.amb.stop();
+    try { sessionStorage.removeItem("angano_active"); } catch { /* */ }
     this.ui.leaveStage(); this.phase = "lobby"; this.role = null;
     this.ui.showMenu((name, room) => this.startConnect(name, room ?? randomCode()));
   }
@@ -59,6 +61,7 @@ export class Game {
   private async connect(name: string, room: string) {
     this.leaving = false;
     this.currentName = name; this.currentRoom = room;
+    try { sessionStorage.setItem("angano_active", JSON.stringify({ room, name })); } catch { /* */ }
     const ws = await connectAngano({ room, name });
     {
       const client = new AnganoClient(ws); this.client = client;
@@ -224,6 +227,9 @@ export class Game {
   private nameOf(id: string) { return this.players.find((p) => p.id === id)?.name ?? this.narratorPlayers.find((p) => p.id === id)?.name ?? "?"; }
 }
 
+function readActive(): { room: string; name: string } | null {
+  try { const r = sessionStorage.getItem("angano_active"); if (!r) return null; const a = JSON.parse(r); return a && a.room ? a : null; } catch { return null; }
+}
 const NIGHT_PHASES: Phase[] = ["zazavavindrano", "mpamosavy", "mpisikidy", "kalanoro", "songomby", "ombiasy"];
 function isNight(p: Phase): boolean { return NIGHT_PHASES.includes(p); }
 function randomCode(): string { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; return Array.from({ length: 4 }, () => a[(Math.random() * a.length) | 0]).join(""); }

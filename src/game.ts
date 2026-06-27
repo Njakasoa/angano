@@ -106,7 +106,7 @@ export class Game {
       client.on("finish", (m) => {
         this.phase = "finished"; this.amb.play("revelation");
         const reveal: Record<string, string> = {}; m.reveal.forEach((r) => (reveal[r.id] = r.roleId));
-        this.ui.setBanner("revelation_phase", winnerTitle(m.winner), m.text, 0);
+        this.ui.setBanner(m.winner === "songomby" ? "scene_victory_songomby" : "scene_victory_village", winnerTitle(m.winner), m.text, 0);
         this.ui.setVillage(this.players, this.selfId, this.narratorId, { roles: reveal });
         const h = this.ui.el;
         this.ui.setPanel(

@@ -1,0 +1,16 @@
+{
+  "name": "angano-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Angano end-to-end & protocol tests (kept out of the app build).",
+  "scripts": {
+    "smoke": "bun smoke.ts",
+    "reconnect": "bun reconnect.ts",
+    "scenarios": "node scenarios.mjs",
+    "test:proto": "bun smoke.ts && bun reconnect.ts",
+    "test": "bun smoke.ts && bun reconnect.ts && node scenarios.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

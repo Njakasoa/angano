@@ -42,7 +42,7 @@ body {
 .player { display: flex; align-items: center; gap: 10px; background: #0f1424; border-radius: 12px; padding: 9px 13px; font-weight: 800; text-align: left; }
 .player .host { margin-left: auto; color: var(--gold); font-size: .8rem; }
 .pa { font-size: 1.3rem; }
-.config { background: #0f1424; border-radius: 14px; padding: 12px; margin: 8px 0; }
+.config { background: #0f1424; border-radius: 14px; padding: 12px; margin: 8px 0; text-align: left; }
 .role-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { padding: 8px 13px; border-radius: 999px; border: 2px solid var(--line); background: #161d33; font: inherit; font-weight: 800; color: var(--muted); cursor: pointer; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -145,3 +145,18 @@ body {
 /* ── narrator & pacing ── */
 .field.mini2 { width: auto; padding: 9px 11px; }
 .pc-roleimg { width: 100%; height: 30px; border-radius: 8px; background-size: cover; background-position: center 22%; margin: 4px 0 2px; }
+
+/* ── Songomby stepper, lobby actions, scrollbars ── */
+.stepper { display: inline-flex; align-items: center; gap: 8px; }
+.field.mini { width: 56px; text-align: center; }
+.btn.step { width: 42px; min-width: 42px; padding: 10px 0; font-size: 1.25rem; line-height: 1; }
+input[type=number].field::-webkit-outer-spin-button, input[type=number].field::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number].field { -moz-appearance: textfield; appearance: textfield; }
+.lobby-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.lobby-actions .btn { width: 100%; margin-top: 0; }
+
+* { scrollbar-width: thin; scrollbar-color: #3a4570 transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2b3458; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }

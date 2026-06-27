@@ -91,17 +91,19 @@ export class UI {
     const codeEl = h("div", { class: "code" }, "····");
     const list = h("div", { class: "players" });
     const narBtn = h("button", { class: "btn ghost small" }, "Devenir narrateur") as HTMLButtonElement;
-    const songInput = h("input", { class: "field mini", type: "number", min: "1", max: "5", value: "1" }) as HTMLInputElement;
+    const songInput = h("input", { class: "field mini", type: "number", min: "1", max: "5", value: "1", readonly: "" }) as HTMLInputElement;
     const roleToggles = h("div", { class: "role-toggles" });
     const paceSelect = h("select", { class: "field mini2" }, h("option", { value: "rapide" }, "Rapide"), h("option", { value: "normal" }, "Normal"), h("option", { value: "lent" }, "Lent")) as HTMLSelectElement;
     paceSelect.value = "normal";
     const manualChk = h("button", { class: "chip", "data-on": "0", title: "Le narrateur révèle les morts à son rythme (bouton Continuer)" }, "🗣 Morts annoncées") as HTMLButtonElement;
+    const songStep = (d: number) => h("button", { class: "btn ghost step", onclick: () => { songInput.value = String(Math.max(1, Math.min(5, (parseInt(songInput.value) || 1) + d))); pushConfig(); } }, d > 0 ? "+" : "−");
+    const songStepper = h("div", { class: "stepper" }, songStep(-1), songInput, songStep(1));
     const startBtn = h("button", { class: "btn big", onclick: o.onStart }, "Lancer la partie") as HTMLButtonElement;
     const hint = h("div", { class: "tag" }, "");
     const presetRow = h("div", { class: "presets" });
     const cfg = h("div", { class: "config" },
       h("label", { class: "lbl" }, "Preset"), presetRow,
-      h("label", { class: "lbl" }, "Songomby"), songInput,
+      h("label", { class: "lbl" }, "Songomby"), songStepper,
       h("label", { class: "lbl" }, "Rôles spéciaux"), roleToggles,
       h("label", { class: "lbl" }, "Rythme"), h("div", { class: "row" }, paceSelect, manualChk));
 
@@ -128,7 +130,7 @@ export class UI {
         list,
         cfg,
         hint,
-        h("div", { class: "row center" }, startBtn, h("button", { class: "btn ghost", onclick: o.onLeave }, "Quitter")),
+        h("div", { class: "lobby-actions" }, startBtn, h("button", { class: "btn ghost", onclick: o.onLeave }, "Quitter")),
       ),
     ));
 

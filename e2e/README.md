@@ -8,6 +8,7 @@ Tests de bout en bout, gardés hors du build de l'app (leur propre `package.json
 |---|---|---|---|
 | `smoke.ts` | Protocole (WebSocket) — partie complète + secret des rôles | `bun` | core-api `:3000` |
 | `reconnect.ts` | Protocole — déconnexion / reconnexion / anti-rejoin | `bun` | core-api `:3000` |
+| `story.ts` | Protocole — conteur IA (theme + mode IA, fallback `DEFAULT_STORY`) | `bun` | core-api `:3000` |
 | `scenarios.mjs` | Navigateur (Playwright) — chaque issue jouée jusqu'à la fin | `node` | core-api `:3000` **+** front `:5173` |
 
 Le smoke protocole est rapide (~30 s) ; les scénarios navigateur sont plus longs (~3 min, vrai Chromium).

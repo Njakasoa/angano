@@ -2,7 +2,7 @@ import { UI } from "./ui/ui.ts";
 import { Ambiance } from "./audio/ambiance.ts";
 import { connectAngano } from "./net/online.ts";
 import { AnganoClient } from "./net/transport.ts";
-import type { PlayerPublic, NarratorPlayer, RoleInfo, GameConfig, Phase } from "./core/protocol.ts";
+import type { PlayerPublic, NarratorPlayer, RoleInfo, GameConfig, Phase, AnganoServerMsg } from "./core/protocol.ts";
 
 export class Game {
   private ui = new UI(document.getElementById("app")!);
@@ -24,6 +24,8 @@ export class Game {
   private dying: string[] = [];
   private roleReveal = false;
   private journal: string[] = [];
+  private story: Extract<AnganoServerMsg, { k: "story" }> | null = null;
+  private storyIntroShown = false;
   private leaving = false;
   private currentName = ""; private currentRoom = ""; private reconnectTries = 0;
 
@@ -68,7 +70,7 @@ export class Game {
 
       client.on("lobby", (m) => {
         this.selfId = m.selfId; this.hostId = m.hostId; this.narratorId = m.narratorId; this.players = m.players;
-        this.journal = []; // fresh game / rematch
+        this.journal = []; this.story = null; this.storyIntroShown = false; // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
         this.phase = "lobby";
         if (!this.lobby || !document.querySelector(".players")) {
@@ -84,6 +86,7 @@ export class Game {
       });
 
       client.on("role", (m) => { this.role = m.role; this.roleReveal = true; this.render(); });
+      client.on("story", (m) => { this.story = m; this.render(); });
       client.on("narrator", (m) => { this.narratorPlayers = m.players; this.log = m.log; this.render(); });
 
       client.on("phase", (m) => {
@@ -95,7 +98,13 @@ export class Game {
         this.amb.play(m.audioKey); this.ui.setMuted(this.amb.isMuted);
         // headline flourish on day phases + once when the night falls (not on every night sub-step)
         const headline = m.phase === "debat" || m.phase === "vote" || (isNight(m.phase) && !isNight(prev));
-        if (headline && prev !== m.phase) this.ui.phaseIntro(m.imageKey, m.title, m.text);
+        const firstNight = isNight(m.phase) && !isNight(prev) && m.day === 1;
+        if (this.story && firstNight && !this.storyIntroShown) {
+          this.storyIntroShown = true;
+          this.ui.phaseIntro(m.imageKey, this.story.title, this.story.intro);
+        } else if (headline && prev !== m.phase) {
+          this.ui.phaseIntro(m.imageKey, m.title, m.text);
+        }
         this.ui.setBanner(m.imageKey, m.title, m.text, m.day);
         this.ui.setTimer(m.durationMs);
         this.render();
@@ -162,6 +171,7 @@ export class Game {
       const advLabel = this.phase === "aube" ? "🗣 Révéler / Continuer ▶" : this.phase === "debat" ? "Lancer le vote ▶" : "Continuer ▶";
       this.ui.setPanel(
         h("div", { class: "nar-title" }, "🎙️ Vue du narrateur"),
+        ...(this.story ? [h("div", { class: "nar-script" }, h("div", { class: "ns-title" }, "📜 " + this.story.title), h("div", { class: "ns-intro" }, this.story.intro))] : []),
         h("div", { class: "nar-log" }, ...this.log.slice(-8).map((l) => h("div", {}, l))),
         h("button", { class: "btn big", onclick: () => this.client?.nextPhase() }, advLabel),
       );
@@ -169,7 +179,7 @@ export class Game {
     }
 
     const nodes: (HTMLElement | string)[] = [];
-    if (this.role) { nodes.push(this.ui.roleCard(this.role, this.roleReveal)); this.roleReveal = false; }
+    if (this.role) { nodes.push(this.ui.roleCard(this.role, this.roleReveal, this.story?.roleEpithets?.[this.role.roleId])); this.roleReveal = false; }
     if (this.wolfIds.length > 1 && this.role?.team === "songomby" && (this.phase === "songomby")) {
       nodes.push(h("div", { class: "hint" }, "Tes complices : " + this.wolfIds.filter((w) => w !== this.selfId).map((w) => this.nameOf(w)).join(", ")));
     }
@@ -184,6 +194,7 @@ export class Game {
   }
 
   private actionPanel(h: UI["el"]): (HTMLElement | string)[] {
+    if (this.phase === "roles") return [h("div", { class: "hint" }, "Le conteur prépare votre légende… ✨")];
     if (!this.prompt || this.amNarrator) {
       const p = this.players.find((x) => x.id === this.selfId);
       if (p && !p.alive) return [h("div", { class: "hint" }, "Tu es mort·e — observe la partie. 👻")];

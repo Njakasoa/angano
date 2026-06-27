@@ -81,10 +81,14 @@ body {
 .rc-img { width: 64px; height: 64px; border-radius: 12px; background-size: cover; background-position: center; flex: 0 0 auto; }
 .rc-body { text-align: left; }
 .rc-name { font-family: "Cinzel", serif; font-weight: 800; font-size: 1.15rem; }
+.rc-epithet { color: var(--moon); font-weight: 800; font-size: .8rem; font-style: italic; margin: 1px 0 2px; }
 .rc-desc { color: var(--muted); font-weight: 700; font-size: .85rem; }
 .rc-lover { color: var(--evil); font-weight: 800; font-size: .85rem; margin-top: 3px; }
 
 .nar-title { font-family: "Cinzel", serif; font-weight: 800; color: var(--gold); text-align: center; margin-bottom: 8px; }
+.nar-script { background: #0f1424; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+.ns-title { font-family: "Cinzel", serif; font-weight: 800; color: var(--gold); }
+.ns-intro { color: #dfe6ff; font-weight: 700; font-size: .9rem; margin-top: 4px; }
 .nar-log { background: #0f1424; border-radius: 12px; padding: 10px; font-size: .85rem; color: var(--muted); font-weight: 700; max-height: 22dvh; overflow-y: auto; margin-bottom: 10px; }
 .nar-log div { padding: 2px 0; }
 

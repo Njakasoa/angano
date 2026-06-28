@@ -1,4 +1,4 @@
-import type { AnganoClientMsg, AnganoServerMsg, GameConfig } from "../core/protocol.ts";
+import type { AnganoClientMsg, AnganoServerMsg, GameConfig, MissionStatus } from "../core/protocol.ts";
 
 /** Typed wrapper over the Angano websocket. No game logic — the server owns it. */
 export class AnganoClient {
@@ -22,6 +22,7 @@ export class AnganoClient {
   start() { this.send({ k: "start" }); }
   action(targetId: string | null, extra?: string) { this.send({ k: "action", targetId, extra }); }
   vote(targetId: string | null) { this.send({ k: "vote", targetId }); }
+  missionStatus(playerId: string, status: MissionStatus) { this.send({ k: "missionStatus", playerId, status }); }
   nextPhase() { this.send({ k: "nextPhase" }); }
   rematch() { this.send({ k: "rematch" }); }
   close() { try { this.ws.close(); } catch { /* */ } }

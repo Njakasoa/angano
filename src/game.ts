@@ -3,7 +3,10 @@ import { Ambiance } from "./audio/ambiance.ts";
 import { connectAngano } from "./net/online.ts";
 import { AnganoClient } from "./net/transport.ts";
 import { roleDef } from "./core/roles.ts";
-import type { PlayerPublic, NarratorPlayer, RoleInfo, GameConfig, Phase, AnganoServerMsg } from "./core/protocol.ts";
+import type {
+  PlayerPublic, NarratorPlayer, RoleInfo, GameConfig, Phase, AnganoServerMsg,
+  PlayerMissionSheet, NarratorMissionSheet, MissionStatus, PersonalWinner,
+} from "./core/protocol.ts";
 
 export class Game {
   private ui = new UI(document.getElementById("app")!);
@@ -15,6 +18,8 @@ export class Game {
   private players: PlayerPublic[] = [];
   private role: RoleInfo | null = null;
   private narratorPlayers: NarratorPlayer[] = [];
+  private playerStory: PlayerMissionSheet | null = null;
+  private missionSheets: NarratorMissionSheet[] = [];
   private log: string[] = [];
   private phase: Phase = "lobby";
   private prompt: { kind: string; targets: string[] } | null = null;
@@ -71,7 +76,7 @@ export class Game {
 
       client.on("lobby", (m) => {
         this.selfId = m.selfId; this.hostId = m.hostId; this.narratorId = m.narratorId; this.players = m.players;
-        this.journal = []; this.story = null; this.storyIntroShown = false; // fresh game / rematch
+        this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
         this.phase = "lobby";
         if (!this.lobby || !document.querySelector(".players")) {
@@ -87,8 +92,9 @@ export class Game {
       });
 
       client.on("role", (m) => { this.role = m.role; this.roleReveal = true; this.render(); });
+      client.on("playerStory", (m) => { this.playerStory = m.story; this.render(); });
       client.on("story", (m) => { this.story = m; this.render(); });
-      client.on("narrator", (m) => { this.narratorPlayers = m.players; this.log = m.log; this.render(); });
+      client.on("narrator", (m) => { this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? []; this.render(); });
 
       client.on("phase", (m) => {
         const prev = this.phase;
@@ -136,6 +142,8 @@ export class Game {
         const h = this.ui.el;
         this.ui.setPanel(
           h("div", { class: "finish-banner " + (m.winner === "songomby" ? "evil" : "good") }, m.text),
+          ...this.personalWinnersPanel(h, m.personalWinners ?? []),
+          ...this.missionRecap(h, m.missions ?? []),
           h("div", { class: "row center" },
             this.selfId === this.hostId ? h("button", { class: "btn big", onclick: () => client.rematch() }, "Rejouer") : h("div", { class: "tag" }, "L'hôte peut relancer…"),
             h("button", { class: "btn ghost", onclick: () => this.menu() }, "Menu"),
@@ -173,6 +181,7 @@ export class Game {
       this.ui.setPanel(
         h("div", { class: "nar-title" }, "🎙️ Vue du narrateur"),
         ...this.storyPanel(h, true),
+        ...this.narratorMissionPanel(h),
         h("div", { class: "nar-log" }, ...this.log.slice(-8).map((l) => h("div", {}, l))),
         h("button", { class: "btn big", onclick: () => this.client?.nextPhase() }, advLabel),
       );
@@ -181,6 +190,7 @@ export class Game {
 
     const nodes: (HTMLElement | string)[] = [];
     if (this.role) { nodes.push(this.ui.roleCard(this.role, this.roleReveal, this.story?.roleEpithets?.[this.role.roleId])); this.roleReveal = false; }
+    if (this.playerStory) nodes.push(this.playerMissionPanel(h, this.playerStory));
     if (this.story && this.selfId === this.hostId) nodes.push(...this.storyPanel(h, true));
     if (this.wolfIds.length > 1 && this.role?.team === "songomby" && (this.phase === "songomby")) {
       nodes.push(h("div", { class: "hint" }, "Tes complices : " + this.wolfIds.filter((w) => w !== this.selfId).map((w) => this.nameOf(w)).join(", ")));
@@ -220,8 +230,92 @@ export class Game {
     ];
   }
 
+  private playerMissionPanel(h: UI["el"], sheet: PlayerMissionSheet): HTMLElement {
+    return h("div", { class: "mission-player" },
+      h("div", { class: "mission-head" },
+        h("div", { class: "mission-title" }, sheet.title),
+        h("div", { class: "mission-status " + statusClass(sheet.status) }, statusLabel(sheet.status)),
+      ),
+      h("div", { class: "mission-text" }, sheet.background),
+      h("div", { class: "mission-row" }, h("b", {}, "Rumeur"), h("span", {}, sheet.rumor)),
+      h("div", { class: "mission-row" }, h("b", {}, "Secret"), h("span", {}, sheet.secret)),
+      h("div", { class: "mission-row strong" }, h("b", {}, "Mission"), h("span", {}, sheet.mission)),
+      h("div", { class: "mission-row" }, h("b", {}, "Validation"), h("span", {}, sheet.successCondition)),
+      ...this.rewardNodes(h, sheet.rewards),
+      h("div", { class: "mission-reward" }, sheet.rewardTitle),
+    );
+  }
+
+  private narratorMissionPanel(h: UI["el"]): HTMLElement[] {
+    if (!this.missionSheets.length) return [];
+    const pending = this.missionSheets.filter((s) => s.status === "pending").length;
+    const validated = this.missionSheets.filter((s) => s.status === "validated").length;
+    return [h("div", { class: "mission-narrator" },
+      h("div", { class: "mission-head" },
+        h("div", { class: "mission-title" }, "Fiches et missions"),
+        h("div", { class: "mission-count" }, `${validated}/${this.missionSheets.length} validées · ${pending} en cours`),
+      ),
+      h("div", { class: "mission-list" },
+        ...this.missionSheets.map((sheet) => h("details", { class: "mission-card " + statusClass(sheet.status), open: sheet.status === "pending" ? "" : false },
+          h("summary", {},
+            h("span", { class: "mission-card-name" }, `${sheet.playerName} · ${sheet.nameMg}`),
+            h("span", { class: "mission-status " + statusClass(sheet.status) }, statusLabel(sheet.status)),
+          ),
+          h("div", { class: "mission-row" }, h("b", {}, "Histoire"), h("span", {}, sheet.background)),
+          h("div", { class: "mission-row" }, h("b", {}, "Rumeur"), h("span", {}, sheet.rumor)),
+          h("div", { class: "mission-row" }, h("b", {}, "Secret"), h("span", {}, sheet.secret)),
+          h("div", { class: "mission-row strong" }, h("b", {}, "Mission"), h("span", {}, sheet.mission)),
+          h("div", { class: "mission-row" }, h("b", {}, "Validation"), h("span", {}, sheet.successCondition)),
+          ...this.rewardNodes(h, sheet.rewards),
+          h("div", { class: "mission-actions" },
+            h("button", { class: "btn small", disabled: sheet.status === "validated" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "validated") }, "Valider"),
+            h("button", { class: "btn ghost small", disabled: sheet.status === "failed" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "failed") }, "Rater"),
+            h("button", { class: "btn ghost small", disabled: sheet.status === "pending" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "pending") }, "Rouvrir"),
+          ),
+        )),
+      ),
+    )];
+  }
+
+  private missionRecap(h: UI["el"], sheets: NarratorMissionSheet[]): HTMLElement[] {
+    if (!sheets.length) return [];
+    return [h("div", { class: "mission-recap" },
+      h("div", { class: "mission-title" }, "Missions secrètes"),
+      ...sheets.map((sheet) => h("div", { class: "mission-recap-row " + statusClass(sheet.status) },
+        h("span", {}, `${sheet.playerName} · ${sheet.rewardTitle}`),
+        h("strong", {}, statusLabel(sheet.status)),
+      )),
+    )];
+  }
+  private personalWinnersPanel(h: UI["el"], winners: PersonalWinner[]): HTMLElement[] {
+    if (!winners.length) return [];
+    return [h("div", { class: "personal-winners" },
+      h("div", { class: "mission-title" }, "Gagnants personnels"),
+      ...winners.map((winner) => h("div", { class: "personal-winner-row" },
+        h("span", {}, `${winner.name} · ${winner.nameMg}`),
+        h("small", {}, winner.reason),
+      )),
+    )];
+  }
+
+  private setMissionStatus(playerId: string, status: MissionStatus) {
+    this.client?.missionStatus(playerId, status);
+  }
+
+  private rewardNodes(h: UI["el"], rewards: PlayerMissionSheet["rewards"]): HTMLElement[] {
+    if (!rewards.length) return [];
+    return [h("div", { class: "reward-list" },
+      h("div", { class: "reward-title" }, "Atout moteur"),
+      ...rewards.map((reward) => h("div", { class: "reward-chip " + reward.status },
+        h("span", {}, reward.name),
+        h("small", {}, reward.desc),
+        h("strong", {}, rewardStatusLabel(reward.status, reward.usesLeft)),
+      )),
+    )];
+  }
+
   private actionPanel(h: UI["el"]): (HTMLElement | string)[] {
-    if (this.phase === "roles") return [h("div", { class: "hint" }, "Le conteur prépare votre légende… ✨")];
+    if (this.phase === "roles") return [h("div", { class: "hint" }, "La légende se prépare… ✨")];
     if (!this.prompt || this.amNarrator) {
       const p = this.players.find((x) => x.id === this.selfId);
       if (p && !p.alive) return [h("div", { class: "hint" }, "Tu es mort·e — observe la partie. 👻")];
@@ -231,6 +325,7 @@ export class Game {
     switch (this.prompt.kind) {
       case "zazavavindrano": return [h("div", { class: "hint" }, "Pose un fady d'eau sur un joueur — touche une carte.")];
       case "kalanoro": return [h("div", { class: "hint" }, "Lis les pas d'un joueur — touche une carte.")];
+      case "kinoly": return [h("div", { class: "hint" }, "Hante un joueur — touche une carte.")];
       case "mpamosavy": return [h("div", { class: "hint" }, "Maudis un joueur pour faire échouer son pouvoir — touche une carte.")];
       case "mpisikidy": return [h("div", { class: "hint" }, "Sonde un joueur — touche une carte.")];
       case "songomby": return [h("div", { class: "hint" }, "Choisis ta victime — touche une carte.")];
@@ -256,7 +351,7 @@ export class Game {
     const k = this.prompt.kind;
     if (k === "vote") { this.client?.vote(id); return; } // can change until tally
     if (k === "ombiasy") { if (this.witchMode) { this.client?.action(id, "poison"); this.witchMode = false; this.prompt = null; this.render(); } return; }
-    // zazavavindrano / kalanoro / mpamosavy / mpisikidy / songomby / mpihaza: single pick
+    // zazavavindrano / kalanoro / kinoly / mpamosavy / mpisikidy / songomby / mpihaza: single pick
     this.client?.action(id);
     this.prompt = null; this.render();
   }
@@ -268,11 +363,20 @@ export class Game {
 function readActive(): { room: string; name: string } | null {
   try { const r = sessionStorage.getItem("angano_active"); if (!r) return null; const a = JSON.parse(r); return a && a.room ? a : null; } catch { return null; }
 }
-const NIGHT_PHASES: Phase[] = ["zazavavindrano", "mpamosavy", "mpisikidy", "kalanoro", "songomby", "ombiasy"];
+const NIGHT_PHASES: Phase[] = ["zazavavindrano", "mpamosavy", "mpisikidy", "kalanoro", "kinoly", "songomby", "ombiasy"];
 function isNight(p: Phase): boolean { return NIGHT_PHASES.includes(p); }
 function randomCode(): string { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; return Array.from({ length: 4 }, () => a[(Math.random() * a.length) | 0]).join(""); }
 function winnerTitle(w: string): string { return w === "village" ? "Le village l'emporte 🎉" : w === "songomby" ? "Les Songomby l'emportent 🐺" : "Fin de partie"; }
 function paceLabel(p: string): string { return p === "rapide" ? "rythme rapide" : p === "lent" ? "rythme lent" : "rythme normal"; }
 function storyRoleNames(ids: string[]): string {
   return ids.length ? ids.map((id) => roleDef(id).nameMg).join(", ") : "aucun rôle spécial";
+}
+function statusLabel(s: MissionStatus): string {
+  return s === "validated" ? "validée" : s === "failed" ? "ratée" : "en cours";
+}
+function statusClass(s: MissionStatus): string {
+  return s === "validated" ? "ok" : s === "failed" ? "ko" : "wait";
+}
+function rewardStatusLabel(status: PlayerMissionSheet["rewards"][number]["status"], usesLeft: number): string {
+  return status === "unlocked" ? `${usesLeft} usage` : status === "used" ? "utilisé" : "verrouillé";
 }

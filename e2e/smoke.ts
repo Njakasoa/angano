@@ -30,7 +30,7 @@ let finished: { winner: string; reveal: Msg[] } | null = null;
 const aliveOf = (id: string) => latest.players.find((p) => p.id === id)?.alive;
 const firstAliveByRole = (role: string) => latest.players.find((p) => p.alive && roleById[p.id] === role)?.id;
 const plannedVictim = () => firstAliveByRole("mponina") ?? latest.players.find((p) => p.alive && roleById[p.id] && !["songomby", "kinoly", "mpamosavy"].includes(roleById[p.id]))?.id;
-const chooseEvilToVote = () => { for (const role of ["mpamosavy", "songomby", "kinoly"]) { const id = firstAliveByRole(role); if (id) return id; } return undefined; };
+const chooseSongombyTeamToVote = () => { for (const role of ["mpamosavy", "songomby"]) { const id = firstAliveByRole(role); if (id) return id; } return undefined; };
 
 async function guest(name: string): Promise<string> {
   const r = await fetch(API + "/v1/auth/guest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) });
@@ -64,10 +64,11 @@ function handlePrompt(c: Client, m: Msg) {
     case "songomby": pick(plannedVictim()); break;
     case "mpisikidy": { const k = idsByRole().kinoly?.[0]; pick(k && aliveOf(k) ? k : targets[0]); break; } // inspect Kinoly → expect disguise
     case "kalanoro": pick(targets.find((t) => roleById[t] === "songomby") ?? targets[0]); break;
+    case "kinoly": pick(plannedVictim()); break;
     case "mpamosavy": { const kal = idsByRole().kalanoro?.[0]; pick(currentDay === 1 && kal ? kal : plannedVictim()); break; } // night1 block Kalanoro
     case "ombiasy": send(c, { k: "action", targetId: null, extra: "skip" }); break;
     case "mpihaza": pick(targets[0]); break;
-    case "vote": send(c, { k: "vote", targetId: chooseEvilToVote() ?? targets[0] }); break;
+    case "vote": send(c, { k: "vote", targetId: chooseSongombyTeamToVote() ?? targets[0] }); break;
   }
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -98,9 +99,11 @@ async function main() {
 
   ok(!!finished, "la partie atteint finish");
   ok(finished?.winner === "village", `le village gagne (winner=${finished?.winner})`);
-  const evilRoles = new Set(["songomby", "kinoly", "mpamosavy"]);
-  const evilInReveal = finished?.reveal.filter((r) => evilRoles.has(r.roleId)).length ?? 0;
-  ok(evilInReveal === 3, `3 rôles maléfiques dans le reveal (=${evilInReveal})`);
+  const songombyTeam = new Set(["songomby", "mpamosavy"]);
+  const songombyTeamInReveal = finished?.reveal.filter((r) => songombyTeam.has(r.roleId)).length ?? 0;
+  const kinolyInReveal = finished?.reveal.filter((r) => r.roleId === "kinoly").length ?? 0;
+  ok(songombyTeamInReveal === 2, `2 rôles du camp Songomby dans le reveal (=${songombyTeamInReveal})`);
+  ok(kinolyInReveal === 1, `Kinoly neutre présent dans le reveal (=${kinolyInReveal})`);
 
   ok(byName["Narr"]!.gotNarrator, "le narrateur reçoit la god-view");
   ok(Object.keys(roleById).length === 10, `god-view couvre les 10 joueurs (=${Object.keys(roleById).length})`);

@@ -8,7 +8,7 @@ Tests de bout en bout, gardés hors du build de l'app (leur propre `package.json
 |---|---|---|---|
 | `smoke.ts` | Protocole (WebSocket) — partie complète + secret des rôles | `bun` | core-api `:3000` |
 | `reconnect.ts` | Protocole — déconnexion / reconnexion / anti-rejoin | `bun` | core-api `:3000` |
-| `story.ts` | Protocole — conteur IA (theme + mode IA, fallback `DEFAULT_STORY`) | `bun` | core-api `:3000` |
+| `story.ts` | Protocole — narrateur obligatoire + histoire IA + fiches missions | `bun` | core-api `:3000` |
 | `scenarios.mjs` | Navigateur (Playwright) — chaque issue jouée jusqu'à la fin | `node` | core-api `:3000` **+** front `:5173` |
 
 Le smoke protocole est rapide (~30 s) ; les scénarios navigateur sont plus longs (~3 min, vrai Chromium).
@@ -32,6 +32,7 @@ cd e2e && npm install && npx playwright install chromium
 cd e2e
 bun smoke.ts          # secret des rôles + partie complète (village gagne)
 bun reconnect.ts      # déconnexion/reconnexion + anti-rejoin
+bun story.ts          # narrateur obligatoire + histoire IA + fiches missions
 node scenarios.mjs    # 7 scénarios navigateur jusqu'à la fin
 
 # ou tout :

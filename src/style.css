@@ -25,6 +25,7 @@ body {
 .field:focus { outline: none; border-color: var(--accent); }
 
 .btn { font: inherit; font-weight: 800; padding: 12px 18px; border-radius: 14px; border: none; cursor: pointer; background: var(--accent); color: #fff; box-shadow: 0 4px 0 #5b43c4; transition: transform .05s, box-shadow .05s; }
+.btn:disabled { opacity: .48; cursor: not-allowed; transform: none; box-shadow: 0 4px 0 #5b43c4; }
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #5b43c4; }
 .btn.big { width: 100%; margin-top: 14px; font-size: 1.1rem; padding: 15px; }
 .btn.ghost { background: #232b46; color: var(--ink); box-shadow: 0 4px 0 #161c30; }
@@ -48,6 +49,8 @@ body {
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip.evil { border-color: #5a2230; }
 .chip.evil.on { background: var(--evil); border-color: var(--evil); color: #2a0008; }
+.chip.neutral { border-color: rgba(232, 193, 90, .45); }
+.chip.neutral.on { background: var(--gold); border-color: var(--gold); color: #231a04; }
 .hint { color: var(--muted); font-weight: 700; text-align: center; padding: 6px 0; }
 
 /* ── in-game stage ── */
@@ -77,7 +80,7 @@ body {
 
 .panel { flex: 0 0 auto; background: var(--panel); border-top: 1px solid var(--line); padding: 14px; max-height: 42dvh; overflow-y: auto; }
 .rolecard { display: flex; gap: 12px; align-items: center; background: #0f1424; border: 2px solid var(--line); border-radius: 16px; padding: 10px; margin-bottom: 10px; }
-.rolecard.evil { border-color: var(--evil); } .rolecard.good { border-color: var(--good); }
+.rolecard.evil { border-color: var(--evil); } .rolecard.good { border-color: var(--good); } .rolecard.neutral { border-color: var(--gold); }
 .rc-img { width: 64px; height: 64px; border-radius: 12px; background-size: cover; background-position: center; flex: 0 0 auto; }
 .rc-body { text-align: left; }
 .rc-name { font-family: "Cinzel", serif; font-weight: 800; font-size: 1.15rem; }
@@ -98,6 +101,11 @@ body {
 
 .finish-banner { text-align: center; font-family: "Cinzel", serif; font-weight: 800; font-size: 1.2rem; padding: 14px; border-radius: 14px; }
 .finish-banner.good { color: var(--good); } .finish-banner.evil { color: var(--evil); }
+.personal-winners { background: #0f1424; border: 1px solid rgba(232, 193, 90, .5); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; text-align: left; }
+.personal-winner-row { display: grid; gap: 3px; padding: 7px 0; border-top: 1px solid #1b2238; }
+.personal-winner-row:first-of-type { border-top: none; }
+.personal-winner-row span { color: var(--gold); font-weight: 900; }
+.personal-winner-row small { color: var(--muted); font-weight: 700; line-height: 1.25; }
 
 .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--gold); color: #1a1400; font-weight: 800; padding: 10px 18px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 50; max-width: 90vw; text-align: center; }
 
@@ -106,6 +114,43 @@ body {
 .journal-title { font-weight: 800; font-size: .78rem; color: var(--gold); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
 .journal-item { font-weight: 700; font-size: .86rem; color: #dfe6ff; padding: 3px 0; border-top: 1px solid #1b2238; }
 .journal-item:first-of-type { border-top: none; }
+
+/* ── role-play missions ── */
+.mission-player, .mission-narrator, .mission-recap { background: #0f1424; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; text-align: left; }
+.mission-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+.mission-title { font-family: "Cinzel", serif; font-weight: 800; color: var(--gold); overflow-wrap: anywhere; }
+.mission-count { color: var(--muted); font-weight: 800; font-size: .78rem; white-space: nowrap; }
+.mission-status { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; font-weight: 900; font-size: .72rem; text-transform: uppercase; white-space: nowrap; }
+.mission-status.ok { background: rgba(82, 201, 139, .18); color: #6ee7a8; }
+.mission-status.ko { background: rgba(255, 93, 108, .18); color: #ff9aa5; }
+.mission-status.wait { background: rgba(232, 193, 90, .16); color: var(--gold); }
+.mission-text { color: #dfe6ff; font-weight: 700; font-size: .9rem; line-height: 1.35; margin-bottom: 8px; }
+.mission-row { display: grid; grid-template-columns: 86px 1fr; gap: 9px; color: var(--muted); font-weight: 700; font-size: .84rem; padding: 4px 0; border-top: 1px solid #1b2238; }
+.mission-row b { color: var(--moon); }
+.mission-row.strong span { color: #eef1ff; font-weight: 800; }
+.mission-reward { margin-top: 8px; color: var(--gold); font-weight: 900; font-size: .86rem; }
+.mission-list { display: flex; flex-direction: column; gap: 8px; }
+.mission-card { border: 1px solid #263052; border-radius: 12px; padding: 8px 10px; background: #131a2e; }
+.mission-card.ok { border-color: rgba(82, 201, 139, .45); }
+.mission-card.ko { border-color: rgba(255, 93, 108, .45); }
+.mission-card summary { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 900; color: #eef1ff; }
+.mission-card summary::-webkit-details-marker { display: none; }
+.mission-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mission-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.mission-recap-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid #1b2238; font-weight: 800; color: #dfe6ff; }
+.mission-recap-row strong { font-size: .78rem; text-transform: uppercase; }
+.mission-recap-row.ok strong { color: #6ee7a8; }
+.mission-recap-row.ko strong { color: #ff9aa5; }
+.mission-recap-row.wait strong { color: var(--gold); }
+.reward-list { margin-top: 8px; border-top: 1px solid #1b2238; padding-top: 8px; }
+.reward-title { color: var(--moon); font-weight: 900; font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.reward-chip { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; border: 1px solid #293459; border-radius: 10px; padding: 7px 9px; background: #11182a; }
+.reward-chip span { font-weight: 900; color: #eef1ff; }
+.reward-chip small { grid-column: 1 / -1; color: var(--muted); font-weight: 700; line-height: 1.25; }
+.reward-chip strong { font-size: .72rem; text-transform: uppercase; color: var(--muted); }
+.reward-chip.unlocked { border-color: rgba(82, 201, 139, .5); background: rgba(82, 201, 139, .08); }
+.reward-chip.unlocked strong { color: #6ee7a8; }
+.reward-chip.used { border-color: rgba(151, 160, 196, .45); opacity: .72; }
 
 /* ── motion: phase intro, deaths, reveals ── */
 .phase-intro { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; cursor: pointer; background-size: cover; background-position: center; overflow-y: auto; }
@@ -143,7 +188,7 @@ body {
 .rc-goal { color: var(--gold); font-weight: 800; font-size: .82rem; margin-top: 4px; }
 .codex { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
 .codex-tile { display: flex; gap: 10px; align-items: center; background: #0f1424; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
-.codex-tile.evil { border-color: var(--evil); } .codex-tile.good { border-color: var(--good); }
+.codex-tile.evil { border-color: var(--evil); } .codex-tile.good { border-color: var(--good); } .codex-tile.neutral { border-color: var(--gold); }
 .ct-img { width: 56px; height: 56px; border-radius: 10px; background-size: cover; background-position: center; flex: 0 0 auto; }
 .ct-name { font-family: "Cinzel", serif; font-weight: 800; }
 .ct-desc { color: var(--muted); font-weight: 700; font-size: .82rem; }

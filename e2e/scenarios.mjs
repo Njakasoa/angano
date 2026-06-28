@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const URL = process.env.ANGANO_URL || "http://localhost:5173";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const NAME2ROLE = { "Mponina": "mponina", "Songomby": "songomby", "Mpisikidy": "mpisikidy", "Ombiasy": "ombiasy", "Mpihaza": "mpihaza", "Zazavavindrano": "zazavavindrano", "Kalanoro": "kalanoro", "Kinoly": "kinoly", "Mpamosavy": "mpamosavy" };
-const EVIL = new Set(["songomby", "kinoly", "mpamosavy"]);
+const SONGOMBY_TEAM = new Set(["songomby", "mpamosavy"]);
 const txt = async (loc) => (await loc.textContent().catch(() => "")) || "";
 
 let browser;
@@ -86,9 +86,9 @@ async function driveToFinish({ host, players, roleByName }, mode, maxMs = 70000)
     if (/soigne/i.test(await txt(host.locator(".nar-log")))) healSeen = true;
     const alive = await aliveNames(host);
     let voteName;
-    if (mode.vote === "village") voteName = alive.find((nm) => EVIL.has(roleByName[nm]));
-    else if (mode.vote === "songomby") voteName = alive.find((nm) => !EVIL.has(roleByName[nm]));
-    else if (mode.vote === "name") voteName = mode.voteName && alive.includes(mode.voteName) ? mode.voteName : alive.find((nm) => !EVIL.has(roleByName[nm]));
+    if (mode.vote === "village") voteName = alive.find((nm) => SONGOMBY_TEAM.has(roleByName[nm]));
+    else if (mode.vote === "songomby") voteName = alive.find((nm) => !SONGOMBY_TEAM.has(roleByName[nm]));
+    else if (mode.vote === "name") voteName = mode.voteName && alive.includes(mode.voteName) ? mode.voteName : alive.find((nm) => !SONGOMBY_TEAM.has(roleByName[nm]));
     for (const p of players) await drivePlayer(p, mode, voteName).catch(() => {});
     await sleep(220);
   }

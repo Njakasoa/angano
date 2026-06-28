@@ -11,7 +11,7 @@ export const ROLES: Record<string, RoleDef> = {
   mpihaza: { id: "mpihaza", nameMg: "Mpihaza", team: "village", asset: "role_mpihaza", optional: true, desc: "Quand tu meurs, tu décoches une dernière flèche et emportes un joueur." },
   zazavavindrano: { id: "zazavavindrano", nameMg: "Zazavavindrano", team: "village", asset: "role_zazavavindrano", optional: true, desc: "Chaque nuit, pose un fady d'eau sur un joueur. Si une force hostile le trouble, tu sentiras sa trace." },
   kalanoro: { id: "kalanoro", nameMg: "Kalanoro", team: "village", asset: "role_kalanoro", optional: true, desc: "Chaque nuit, lis les pas d'un joueur : tu sauras s'il a quitté sa place cette nuit." },
-  kinoly: { id: "kinoly", nameMg: "Kinoly", team: "songomby", asset: "role_kinoly", optional: true, desc: "Tu chasses avec les Songomby, mais les signes te font paraître innocent à la divination." },
+  kinoly: { id: "kinoly", nameMg: "Kinoly", team: "neutre", asset: "role_kinoly", optional: true, desc: "Revenant neutre. Chaque nuit, hante un joueur ; gagne personnellement s'il survit après avoir vu une cible hantée mourir au vote. Paraît Mponina au Mpisikidy." },
   mpamosavy: { id: "mpamosavy", nameMg: "Mpamosavy", team: "songomby", asset: "role_mpamosavy", optional: true, desc: "Chaque nuit, tu maudis un joueur : son pouvoir nocturne échoue." },
 };
 

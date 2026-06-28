@@ -23,6 +23,7 @@ export class AnganoClient {
   action(targetId: string | null, extra?: string) { this.send({ k: "action", targetId, extra }); }
   vote(targetId: string | null) { this.send({ k: "vote", targetId }); }
   missionStatus(playerId: string, status: MissionStatus) { this.send({ k: "missionStatus", playerId, status }); }
+  missionReviewRequest() { this.send({ k: "missionReviewRequest" }); }
   nextPhase() { this.send({ k: "nextPhase" }); }
   rematch() { this.send({ k: "rematch" }); }
   close() { try { this.ws.close(); } catch { /* */ } }

@@ -51,7 +51,7 @@ body {
 .hint { color: var(--muted); font-weight: 700; text-align: center; padding: 6px 0; }
 
 /* ── in-game stage ── */
-.screen.stage { min-height: 100dvh; display: flex; flex-direction: column; }
+.screen.stage { height: 100dvh; min-height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 .banner { position: relative; height: 30dvh; min-height: 160px; overflow: hidden; }
 .banner-img { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(.62); transition: background-image .4s; }
 .banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, var(--bg0)); }
@@ -89,6 +89,10 @@ body {
 .nar-script { background: #0f1424; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
 .ns-title { font-family: "Cinzel", serif; font-weight: 800; color: var(--gold); }
 .ns-intro { color: #dfe6ff; font-weight: 700; font-size: .9rem; margin-top: 4px; }
+.ns-meta { color: var(--muted); font-weight: 800; font-size: .78rem; margin-top: 6px; }
+.ns-script { border-top: 1px solid #1b2238; margin-top: 8px; padding-top: 8px; }
+.ns-subtitle { color: var(--moon); font-weight: 800; font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.ns-line { color: #dfe6ff; font-weight: 700; font-size: .84rem; padding: 3px 0; }
 .nar-log { background: #0f1424; border-radius: 12px; padding: 10px; font-size: .85rem; color: var(--muted); font-weight: 700; max-height: 22dvh; overflow-y: auto; margin-bottom: 10px; }
 .nar-log div { padding: 2px 0; }
 
@@ -104,11 +108,11 @@ body {
 .journal-item:first-of-type { border-top: none; }
 
 /* ── motion: phase intro, deaths, reveals ── */
-.phase-intro { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; cursor: pointer; background-size: cover; background-position: center; }
+.phase-intro { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; cursor: pointer; background-size: cover; background-position: center; overflow-y: auto; }
 .phase-intro::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(11,14,26,.5), rgba(11,14,26,.82)); }
 .phase-intro > * { position: relative; z-index: 1; }
-.pi-title { font-family: "Cinzel", serif; font-weight: 800; font-size: 2rem; color: var(--moon); text-shadow: 0 2px 16px #000; }
-.pi-text { color: #dfe6ff; font-weight: 700; margin-top: 8px; text-shadow: 0 1px 8px #000; max-width: 30ch; }
+.pi-title { font-family: "Cinzel", serif; font-weight: 800; font-size: 2rem; color: var(--moon); text-shadow: 0 2px 16px #000; max-width: min(18ch, 92vw); overflow-wrap: anywhere; }
+.pi-text { color: #dfe6ff; font-weight: 700; line-height: 1.45; margin-top: 10px; text-shadow: 0 1px 8px #000; max-width: min(68ch, 92vw); max-height: 54dvh; overflow-y: auto; overflow-wrap: anywhere; }
 .phase-intro.in { animation: piIn .5s ease both; }
 .phase-intro.out { animation: piOut .4s ease both; }
 @keyframes piIn { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }

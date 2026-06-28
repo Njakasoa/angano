@@ -2,6 +2,7 @@ import { UI } from "./ui/ui.ts";
 import { Ambiance } from "./audio/ambiance.ts";
 import { connectAngano } from "./net/online.ts";
 import { AnganoClient } from "./net/transport.ts";
+import { roleDef } from "./core/roles.ts";
 import type { PlayerPublic, NarratorPlayer, RoleInfo, GameConfig, Phase, AnganoServerMsg } from "./core/protocol.ts";
 
 export class Game {
@@ -101,9 +102,9 @@ export class Game {
         const firstNight = isNight(m.phase) && !isNight(prev) && m.day === 1;
         if (this.story && firstNight && !this.storyIntroShown) {
           this.storyIntroShown = true;
-          this.ui.phaseIntro(m.imageKey, this.story.title, this.story.intro);
+          this.ui.phaseIntro(m.imageKey, this.story.title, this.story.intro, { phaseMs: m.durationMs });
         } else if (headline && prev !== m.phase) {
-          this.ui.phaseIntro(m.imageKey, m.title, m.text);
+          this.ui.phaseIntro(m.imageKey, m.title, m.text, { phaseMs: m.durationMs });
         }
         this.ui.setBanner(m.imageKey, m.title, m.text, m.day);
         this.ui.setTimer(m.durationMs);
@@ -171,7 +172,7 @@ export class Game {
       const advLabel = this.phase === "aube" ? "🗣 Révéler / Continuer ▶" : this.phase === "debat" ? "Lancer le vote ▶" : "Continuer ▶";
       this.ui.setPanel(
         h("div", { class: "nar-title" }, "🎙️ Vue du narrateur"),
-        ...(this.story ? [h("div", { class: "nar-script" }, h("div", { class: "ns-title" }, "📜 " + this.story.title), h("div", { class: "ns-intro" }, this.story.intro))] : []),
+        ...this.storyPanel(h, true),
         h("div", { class: "nar-log" }, ...this.log.slice(-8).map((l) => h("div", {}, l))),
         h("button", { class: "btn big", onclick: () => this.client?.nextPhase() }, advLabel),
       );
@@ -180,6 +181,7 @@ export class Game {
 
     const nodes: (HTMLElement | string)[] = [];
     if (this.role) { nodes.push(this.ui.roleCard(this.role, this.roleReveal, this.story?.roleEpithets?.[this.role.roleId])); this.roleReveal = false; }
+    if (this.story && this.selfId === this.hostId) nodes.push(...this.storyPanel(h, true));
     if (this.wolfIds.length > 1 && this.role?.team === "songomby" && (this.phase === "songomby")) {
       nodes.push(h("div", { class: "hint" }, "Tes complices : " + this.wolfIds.filter((w) => w !== this.selfId).map((w) => this.nameOf(w)).join(", ")));
     }
@@ -191,6 +193,31 @@ export class Game {
       ));
     }
     this.ui.setPanel(...nodes);
+  }
+
+  private storyPanel(h: UI["el"], showScript: boolean): HTMLElement[] {
+    const s = this.story;
+    if (!s) return [];
+    const composition = s.composition
+      ? [
+          h("div", { class: "ns-meta" }, `Composition retenue : ${s.composition.songomby} Songomby · ${paceLabel(s.composition.pace)}`),
+          h("div", { class: "ns-meta" }, `Rôles spéciaux : ${storyRoleNames(s.composition.roles)}`),
+        ]
+      : [];
+    const script = showScript && s.narratorScript?.length
+      ? [h("div", { class: "ns-script" },
+          h("div", { class: "ns-subtitle" }, "Script narrateur"),
+          ...s.narratorScript.map((line) => h("div", { class: "ns-line" }, line)),
+        )]
+      : [];
+    return [
+      h("div", { class: "nar-script" },
+        h("div", { class: "ns-title" }, "📜 " + s.title),
+        h("div", { class: "ns-intro" }, s.intro),
+        ...composition,
+        ...script,
+      ),
+    ];
   }
 
   private actionPanel(h: UI["el"]): (HTMLElement | string)[] {
@@ -245,3 +272,7 @@ const NIGHT_PHASES: Phase[] = ["zazavavindrano", "mpamosavy", "mpisikidy", "kala
 function isNight(p: Phase): boolean { return NIGHT_PHASES.includes(p); }
 function randomCode(): string { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; return Array.from({ length: 4 }, () => a[(Math.random() * a.length) | 0]).join(""); }
 function winnerTitle(w: string): string { return w === "village" ? "Le village l'emporte 🎉" : w === "songomby" ? "Les Songomby l'emportent 🐺" : "Fin de partie"; }
+function paceLabel(p: string): string { return p === "rapide" ? "rythme rapide" : p === "lent" ? "rythme lent" : "rythme normal"; }
+function storyRoleNames(ids: string[]): string {
+  return ids.length ? ids.map((id) => roleDef(id).nameMg).join(", ") : "aucun rôle spécial";
+}

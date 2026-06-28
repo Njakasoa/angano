@@ -67,7 +67,7 @@ function handlePrompt(c: Client, m: Msg) {
     case "kinoly": pick(plannedVictim()); break;
     case "mpamosavy": { const kal = idsByRole().kalanoro?.[0]; pick(currentDay === 1 && kal ? kal : plannedVictim()); break; } // night1 block Kalanoro
     case "ombiasy": send(c, { k: "action", targetId: null, extra: "skip" }); break;
-    case "mpihaza": pick(targets[0]); break;
+    case "fanany": pick(targets[0]); break;
     case "vote": send(c, { k: "vote", targetId: chooseSongombyTeamToVote() ?? targets[0] }); break;
   }
 }

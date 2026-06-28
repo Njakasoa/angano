@@ -23,6 +23,7 @@ export interface RewardInfo {
   name: string;
   desc: string;
   status: RewardStatus;
+  requiredTitles: number;
   uses: number;
   usesLeft: number;
   sourceMissionId: string;
@@ -39,7 +40,9 @@ export interface PlayerMissionSheet {
   successCondition: string;
   unlocks: string[];
   rewards: RewardInfo[];
+  titleReward: string;
   rewardTitle: string;
+  titlesEarned: number;
   status: MissionStatus;
 }
 export interface NarratorMissionSheet extends PlayerMissionSheet {
@@ -75,8 +78,8 @@ export type AnganoServerMsg =
   | { k: "narrator"; players: NarratorPlayer[]; log: string[]; missionSheets?: NarratorMissionSheet[] }
   | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string }
   | { k: "prompt"; kind: string; targets: PlayerPublic[]; options?: string[]; deadline: number }
-  | { k: "seerResult"; targetId: string; roleId: string; nameMg: string }
-  | { k: "trackResult"; targetId: string; visited: boolean }
+  | { k: "seerResult"; targetId: string; roleId: string; nameMg: string; team?: Team }
+  | { k: "trackResult"; targetId: string; visited: boolean; destinationId?: string | null }
   | { k: "fadyTrace"; targetId: string }
   | { k: "blocked" }
   | { k: "wolves"; wolfIds: string[]; victimId: string | null }

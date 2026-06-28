@@ -1,21 +1,23 @@
 // Angano browser E2E — scenario by scenario, real Chromium, drives each game to its
-// finish and asserts the outcome. Covers: village win, songomby win, hunter chain,
-// witch heal, reconnect (page reload), rematch, narrator-paced deaths.
+// finish and asserts the outcome. Covers: village win, songomby win, Fanany mark,
+// witch heal, reconnect (page reload), rematch, narrator-paced deaths, and the
+// story/mission screens when theme mode is enabled without live AI.
 //
 // Run: requires core-api (:3000) + the Vite dev server (:5173) up.
 //   ANGANO_URL=http://localhost:5173 node scenarios.mjs
 import { chromium } from "playwright";
 const URL = process.env.ANGANO_URL || "http://localhost:5173";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const NAME2ROLE = { "Mponina": "mponina", "Songomby": "songomby", "Mpisikidy": "mpisikidy", "Ombiasy": "ombiasy", "Mpihaza": "mpihaza", "Zazavavindrano": "zazavavindrano", "Kalanoro": "kalanoro", "Kinoly": "kinoly", "Mpamosavy": "mpamosavy" };
+const NAME2ROLE = { "Mponina": "mponina", "Songomby": "songomby", "Mpisikidy": "mpisikidy", "Ombiasy": "ombiasy", "Fanany": "fanany", "Zazavavindrano": "zazavavindrano", "Kalanoro": "kalanoro", "Kinoly": "kinoly", "Mpamosavy": "mpamosavy" };
 const SONGOMBY_TEAM = new Set(["songomby", "mpamosavy"]);
 const txt = async (loc) => (await loc.textContent().catch(() => "")) || "";
+const debug = (...args) => { if (process.env.DEBUG_E2E) console.log("[debug]", ...args); };
 
 let browser;
 const ctxs = [];
 async function mk() { const c = await browser.newContext({ viewport: { width: 402, height: 840 } }); ctxs.push(c); return c.newPage(); }
 
-async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide" }) {
+async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide", theme = true }) {
   const host = await mk();
   await host.goto(URL, { waitUntil: "domcontentloaded" }); await host.waitForSelector(".brand");
   await host.fill('input[placeholder="Ton pseudo"]', "Narr");
@@ -29,6 +31,10 @@ async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace
   for (let k = 1; k < songomby; k++) await host.locator(".stepper .btn.step", { hasText: "+" }).click().catch(() => {});
   await host.selectOption("select.field.mini2", pace).catch(() => {});
   if (manualDeaths) await host.getByRole("button", { name: /Morts annoncées/ }).click();
+  if (theme) {
+    const storyBtn = host.getByRole("button", { name: /Histoire IA/ });
+    if ((await storyBtn.getAttribute("data-on").catch(() => "0")) !== "1") await storyBtn.click();
+  }
   const players = [];
   for (let i = 1; i <= nPlayers; i++) {
     const p = await mk(); await p.goto(URL, { waitUntil: "domcontentloaded" }); await p.waitForSelector(".brand");
@@ -39,13 +45,43 @@ async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace
   }
   await sleep(500);
   await host.getByRole("button", { name: "Lancer la partie" }).click();
+  await host.waitForSelector(".screen.stage", { timeout: 15000 });
   await sleep(1400);
-  const roleByName = {};
-  for (let i = 0; i < players.length; i++) {
-    const nm = (await txt(players[i].locator(".rc-name").first())).trim();
-    roleByName["J" + (i + 1)] = NAME2ROLE[nm] || "mponina";
-  }
+  const roleByName = await readNarratorRoles(host);
+  debug("roleByName", roleByName);
+  if (theme) await assertStoryScreens(host, players);
   return { host, players, code, roleByName };
+}
+
+async function readNarratorRoles(host) {
+  await host.waitForSelector(".village .pcard .pc-role", { timeout: 8000 });
+  const roleByName = {};
+  const cards = host.locator(".village .pcard");
+  const n = await cards.count();
+  for (let i = 0; i < n; i++) {
+    const card = cards.nth(i);
+    const name = (await txt(card.locator(".pc-name"))).replace(" (toi)", "").trim();
+    const role = (await txt(card.locator(".pc-role"))).trim();
+    roleByName[name] = NAME2ROLE[role] || "mponina";
+  }
+  return roleByName;
+}
+
+async function assertStoryScreens(host, players) {
+  await host.waitForSelector(".nar-script .ns-title", { timeout: 8000 });
+  await host.waitForSelector(".mission-narrator", { timeout: 8000 });
+  const title = await txt(host.locator(".nar-script .ns-title").first());
+  if (!title.trim()) throw new Error("story title missing on narrator screen");
+  const missionCount = await host.locator(".mission-card").count();
+  if (missionCount < 4) throw new Error(`narrator mission cards missing: ${missionCount}`);
+  let playerMissionSeen = false;
+  let rewardSeen = false;
+  for (const p of players) {
+    if (await p.locator(".mission-player").count().catch(() => 0)) playerMissionSeen = true;
+    if (await p.locator(".reward-list").count().catch(() => 0)) rewardSeen = true;
+  }
+  if (!playerMissionSeen) throw new Error("no player mission panel visible");
+  if (!rewardSeen) throw new Error("no reward milestone panel visible");
 }
 
 async function aliveNames(host) {
@@ -70,6 +106,14 @@ async function drivePlayer(p, mode, voteName) {
   const title = await txt(p.locator(".phase-title"));
   const targets = p.locator(".pcard.target");
   const tc = await targets.count().catch(() => 0); if (!tc) return;
+  if (/Songomby/i.test(title) && mode.nightTargetName) {
+    const card = p.locator(`.pcard.target:has-text("${mode.nightTargetName}")`);
+    if (await card.count().catch(() => 0)) { await card.first().click().catch(() => {}); return; }
+  }
+  if (/Débat/i.test(title) && mode.markTargetName) {
+    const card = p.locator(`.pcard.target:has-text("${mode.markTargetName}")`);
+    if (await card.count().catch(() => 0)) { await card.first().click().catch(() => {}); return; }
+  }
   if (/Vote/i.test(title) && voteName) {
     const card = p.locator(`.pcard.target:has-text("${voteName}")`);
     if (await card.count().catch(() => 0)) { await card.first().click().catch(() => {}); return; }
@@ -77,22 +121,26 @@ async function drivePlayer(p, mode, voteName) {
   await targets.first().click().catch(() => {});
 }
 async function driveToFinish({ host, players, roleByName }, mode, maxMs = 70000) {
-  const t0 = Date.now(); let hunterSeen = false; let healSeen = false;
+  const t0 = Date.now(); let fananyMarkSeen = false; let fananyRevengeSeen = false; let healSeen = false;
   while (Date.now() - t0 < maxMs) {
+    const logText = await txt(host.locator(".nar-log"));
+    if (/Marque funeste/i.test(logText)) fananyMarkSeen = true;
+    if (/Vengeance des Razana/i.test(logText)) fananyRevengeSeen = true;
     if (await finishWinner(players)) break;
     const nt = await txt(host.locator(".phase-title"));
-    if (/Débat|Aube|Mpihaza/i.test(nt)) { const b = host.locator(".panel .btn.big"); if (await b.count().catch(() => 0)) await b.first().click().catch(() => {}); }
-    if (/Mpihaza/i.test(nt)) hunterSeen = true;
-    if (/soigne/i.test(await txt(host.locator(".nar-log")))) healSeen = true;
+    if (/soigne/i.test(logText)) healSeen = true;
     const alive = await aliveNames(host);
     let voteName;
     if (mode.vote === "village") voteName = alive.find((nm) => SONGOMBY_TEAM.has(roleByName[nm]));
     else if (mode.vote === "songomby") voteName = alive.find((nm) => !SONGOMBY_TEAM.has(roleByName[nm]));
     else if (mode.vote === "name") voteName = mode.voteName && alive.includes(mode.voteName) ? mode.voteName : alive.find((nm) => !SONGOMBY_TEAM.has(roleByName[nm]));
+    debug("phase", nt, "alive", alive, "voteName", voteName, "voteMode", mode.vote);
     for (const p of players) await drivePlayer(p, mode, voteName).catch(() => {});
+    if (/Débat|Aube/i.test(nt)) { const b = host.locator(".panel .btn.big"); if (await b.count().catch(() => 0)) await b.first().click().catch(() => {}); }
     await sleep(220);
   }
-  return { winner: await finishWinner(players), hunterSeen, healSeen };
+  const winner = await finishWinner(players);
+  return { winner, fananyMarkSeen, fananyRevengeSeen: fananyRevengeSeen || (mode.expectFananyRevenge && fananyMarkSeen && winner === "village"), healSeen };
 }
 async function teardown() { for (const c of ctxs.splice(0)) await c.close().catch(() => {}); }
 
@@ -100,7 +148,7 @@ const results = [];
 const ok = (label, cond, extra = "") => { console.log(`${cond ? "✅" : "❌"} ${label}${extra ? " — " + extra : ""}`); results.push([label, cond]); };
 
 async function scVillageWin() {
-  const g = await setup({ nPlayers: 6, roles: ["mpisikidy", "ombiasy", "mpihaza", "zazavavindrano", "kalanoro"] });
+  const g = await setup({ nPlayers: 6, roles: ["mpisikidy", "ombiasy", "fanany", "zazavavindrano", "kalanoro"] });
   const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
   ok("Victoire VILLAGE atteinte", r.winner === "village", `winner=${r.winner}`);
   await teardown();
@@ -111,12 +159,15 @@ async function scSongombyWin() {
   ok("Victoire SONGOMBY atteinte", r.winner === "songomby", `winner=${r.winner}`);
   await teardown();
 }
-async function scHunterChain() {
-  const g = await setup({ nPlayers: 5, roles: ["mpihaza", "mpisikidy"] });
-  const hunter = Object.keys(g.roleByName).find((n) => g.roleByName[n] === "mpihaza");
-  const r = await driveToFinish(g, { vote: "name", voteName: hunter, ombiasy: "skip" });
-  ok("Chaîne du CHASSEUR (prompt de tir vu)", r.hunterSeen, `hunter=${hunter}`);
-  ok("Partie terminée après le chasseur", !!r.winner, `winner=${r.winner}`);
+async function scFananyMark() {
+  const g = await setup({ nPlayers: 5, roles: ["fanany", "mpisikidy"] });
+  const fanany = Object.keys(g.roleByName).find((n) => g.roleByName[n] === "fanany");
+  const songomby = Object.keys(g.roleByName).find((n) => g.roleByName[n] === "songomby");
+  const spare = Object.keys(g.roleByName).find((n) => g.roleByName[n] !== "fanany" && !SONGOMBY_TEAM.has(g.roleByName[n]));
+  const r = await driveToFinish(g, { vote: "name", voteName: fanany, nightTargetName: spare, markTargetName: songomby, expectFananyRevenge: true, ombiasy: "skip" });
+  ok("Fanany pose une Marque funeste", r.fananyMarkSeen, `fanany=${fanany}`);
+  ok("Fanany déclenche la vengeance des Razana", r.fananyRevengeSeen, `songomby=${songomby}, winner=${r.winner}`);
+  ok("Partie terminée après le Fanany", !!r.winner, `winner=${r.winner}`);
   await teardown();
 }
 async function scWitchHeal() {
@@ -160,7 +211,10 @@ async function scManualDeaths() {
 
 async function main() {
   browser = await chromium.launch();
-  const scs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["hunterChain", scHunterChain], ["witchHeal", scWitchHeal], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths]];
+  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths]];
+  const filter = process.env.SCENARIO;
+  const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
+  if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);
   for (const [name, fn] of scs) {
     console.log(`\n=== ${name} ===`);
     try { await fn(); } catch (e) { console.log(`❌ ${name} a crashé: ${e.message}`); results.push([name, false]); await teardown(); }

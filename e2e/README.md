@@ -42,6 +42,6 @@ npm test
 URLs surchargeables : `ANGANO_API` (défaut `http://localhost:3000`), `ANGANO_URL` (défaut `http://localhost:5173`).
 
 ## Scénarios navigateur couverts (`scenarios.mjs`)
-Victoire **Village**, victoire **Songomby** (parité), **chaîne du Chasseur**, **soin** de l'Ombiasy,
+Victoire **Village**, victoire **Songomby** (parité), **Marque funeste du Fanany**, **soin** de l'Ombiasy,
 **reconnexion** (rechargement de page → retour en partie), **rematch** (2 parties), **morts annoncées par le narrateur**.
 Chaque scénario pilote plusieurs onglets (1 narrateur + N joueurs) via la god-view et joue jusqu'à l'écran de fin.

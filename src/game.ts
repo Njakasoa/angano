@@ -23,7 +23,7 @@ export class Game {
   private log: string[] = [];
   private phase: Phase = "lobby";
   private prompt: { kind: string; targets: string[] } | null = null;
-  private witchMode = false;
+  private exileMode = false;
   private wolfVictim: string | null = null; private wolfIds: string[] = [];
   private voteTally: Record<string, number> = {};
   private deadReveal: Record<string, string> = {};
@@ -99,7 +99,7 @@ export class Game {
       client.on("phase", (m) => {
         const prev = this.phase;
         if (!this.ui.inStage()) this.ui.enterStage();
-        this.phase = m.phase; this.prompt = null; this.witchMode = false;
+        this.phase = m.phase; this.prompt = null; this.exileMode = false;
         if (m.phase !== "vote") this.voteTally = {};
         if (m.phase !== "aube") this.deadReveal = {};
         this.amb.play(m.audioKey); this.ui.setMuted(this.amb.isMuted);
@@ -118,9 +118,21 @@ export class Game {
       });
 
       client.on("prompt", (m) => { this.prompt = { kind: m.kind, targets: m.targets.map((t) => t.id) }; this.render(); });
-      client.on("seerResult", (m) => { this.ui.toast(`Le sikidy révèle : ${this.nameOf(m.targetId)} est… ${m.nameMg}.`); this.note(`🔮 ${this.nameOf(m.targetId)} → ${m.nameMg}`); });
-      client.on("trackResult", (m) => { this.ui.toast(m.visited ? `Pas inversés : ${this.nameOf(m.targetId)} a quitté sa place cette nuit.` : `${this.nameOf(m.targetId)} semble être resté immobile.`); this.note(`👣 ${this.nameOf(m.targetId)} ${m.visited ? "a quitté sa place" : "est resté immobile"}`); });
-      client.on("fadyTrace", (m) => { this.ui.toast(`Le fady d'eau sur ${this.nameOf(m.targetId)} a été troublé — une présence hostile est venue.`); this.note(`💧 fady troublé sur ${this.nameOf(m.targetId)} (présence hostile)`); });
+      client.on("seerResult", (m) => {
+        const team = m.team ? ` · ${teamLabel(m.team)}` : "";
+        this.ui.toast(`La table indique : ${this.nameOf(m.targetId)} porte le signe ${m.nameMg}${team}.`);
+        this.note(`🔮 ${this.nameOf(m.targetId)} → ${m.nameMg}${team}`);
+      });
+      client.on("trackResult", (m) => {
+        const target = this.nameOf(m.targetId);
+        const destination = m.destinationId ? this.nameOf(m.destinationId) : "";
+        const moved = destination
+          ? `Pas inversés : ${target} a quitté sa place vers ${destination}.`
+          : m.visited ? `Pas inversés : ${target} a quitté sa place cette nuit.` : `${target} semble être resté immobile.`;
+        this.ui.toast(moved);
+        this.note(destination ? `👣 ${target} → ${destination}` : `👣 ${target} ${m.visited ? "a quitté sa place" : "est resté immobile"}`);
+      });
+      client.on("fadyTrace", (m) => { this.ui.toast(`Le Fady des eaux sur ${this.nameOf(m.targetId)} a été troublé — une présence hostile est venue.`); this.note(`💧 fady troublé sur ${this.nameOf(m.targetId)} (présence hostile)`); });
       client.on("blocked", () => { this.ui.toast("Une malédiction a brouillé ton pouvoir cette nuit."); this.note("🚫 ton pouvoir a été bloqué cette nuit"); });
       client.on("wolves", (m) => { this.wolfIds = m.wolfIds; this.wolfVictim = m.victimId; this.render(); });
       client.on("deaths", (m) => {
@@ -241,8 +253,9 @@ export class Game {
       h("div", { class: "mission-row" }, h("b", {}, "Secret"), h("span", {}, sheet.secret)),
       h("div", { class: "mission-row strong" }, h("b", {}, "Mission"), h("span", {}, sheet.mission)),
       h("div", { class: "mission-row" }, h("b", {}, "Validation"), h("span", {}, sheet.successCondition)),
+      h("div", { class: "mission-row strong" }, h("b", {}, sheet.status === "validated" ? "Titre obtenu" : "Titre"), h("span", {}, sheet.titleReward)),
       ...this.rewardNodes(h, sheet.rewards),
-      h("div", { class: "mission-reward" }, sheet.rewardTitle),
+      h("div", { class: "mission-reward" }, `${sheet.titlesEarned} titre${sheet.titlesEarned > 1 ? "s" : ""} gagné${sheet.titlesEarned > 1 ? "s" : ""}`),
     );
   }
 
@@ -266,6 +279,7 @@ export class Game {
           h("div", { class: "mission-row" }, h("b", {}, "Secret"), h("span", {}, sheet.secret)),
           h("div", { class: "mission-row strong" }, h("b", {}, "Mission"), h("span", {}, sheet.mission)),
           h("div", { class: "mission-row" }, h("b", {}, "Validation"), h("span", {}, sheet.successCondition)),
+          h("div", { class: "mission-row strong" }, h("b", {}, sheet.status === "validated" ? "Titre obtenu" : "Titre"), h("span", {}, sheet.titleReward)),
           ...this.rewardNodes(h, sheet.rewards),
           h("div", { class: "mission-actions" },
             h("button", { class: "btn small", disabled: sheet.status === "validated" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "validated") }, "Valider"),
@@ -282,7 +296,7 @@ export class Game {
     return [h("div", { class: "mission-recap" },
       h("div", { class: "mission-title" }, "Missions secrètes"),
       ...sheets.map((sheet) => h("div", { class: "mission-recap-row " + statusClass(sheet.status) },
-        h("span", {}, `${sheet.playerName} · ${sheet.rewardTitle}`),
+        h("span", {}, `${sheet.playerName} · ${sheet.titleReward}`),
         h("strong", {}, statusLabel(sheet.status)),
       )),
     )];
@@ -305,11 +319,11 @@ export class Game {
   private rewardNodes(h: UI["el"], rewards: PlayerMissionSheet["rewards"]): HTMLElement[] {
     if (!rewards.length) return [];
     return [h("div", { class: "reward-list" },
-      h("div", { class: "reward-title" }, "Atout moteur"),
+      h("div", { class: "reward-title" }, "Pouvoirs par titres"),
       ...rewards.map((reward) => h("div", { class: "reward-chip " + reward.status },
         h("span", {}, reward.name),
         h("small", {}, reward.desc),
-        h("strong", {}, rewardStatusLabel(reward.status, reward.usesLeft)),
+        h("strong", {}, `${reward.requiredTitles} titre${reward.requiredTitles > 1 ? "s" : ""} · ${rewardStatusLabel(reward.status, reward.usesLeft)}`),
       )),
     )];
   }
@@ -323,21 +337,21 @@ export class Game {
         : [h("div", { class: "hint" }, "La nuit fait son œuvre… patiente.")];
     }
     switch (this.prompt.kind) {
-      case "zazavavindrano": return [h("div", { class: "hint" }, "Pose un fady d'eau sur un joueur — touche une carte.")];
-      case "kalanoro": return [h("div", { class: "hint" }, "Lis les pas d'un joueur — touche une carte.")];
-      case "kinoly": return [h("div", { class: "hint" }, "Hante un joueur — touche une carte.")];
-      case "mpamosavy": return [h("div", { class: "hint" }, "Maudis un joueur pour faire échouer son pouvoir — touche une carte.")];
-      case "mpisikidy": return [h("div", { class: "hint" }, "Sonde un joueur — touche une carte.")];
+      case "zazavavindrano": return [h("div", { class: "hint" }, "Lie un joueur au Fady des eaux — touche une carte.")];
+      case "kalanoro": return [h("div", { class: "hint" }, "Piste les pas inversés d'un joueur — touche une carte.")];
+      case "kinoly": return [h("div", { class: "hint" }, "Hante un joueur depuis ton réveil — touche une carte.")];
+      case "mpamosavy": return [h("div", { class: "hint" }, "Lance une malédiction nocturne sur un joueur — touche une carte.")];
+      case "mpisikidy": return [h("div", { class: "hint" }, "Lis les signes d'un joueur — touche une carte.")];
       case "songomby": return [h("div", { class: "hint" }, "Choisis ta victime — touche une carte.")];
-      case "mpihaza": return [h("div", { class: "hint" }, "Décoche ta flèche — touche une carte.")];
+      case "fanany": return [h("div", { class: "hint" }, "Pose ta Marque funeste — touche une carte.")];
       case "vote": return [h("div", { class: "hint" }, "Vote pour éliminer un suspect — touche une carte.")];
       case "ombiasy": {
-        if (this.witchMode) return [h("div", { class: "hint" }, "Choisis qui empoisonner — touche une carte.")];
+        if (this.exileMode) return [h("div", { class: "hint" }, "Choisis qui bannir par rituel d'exil — touche une carte.")];
         return [
           h("div", { class: "hint" }, this.wolfVictim ? `Victime des Songomby : ${this.nameOf(this.wolfVictim)}.` : "Aucune victime cette nuit."),
           h("div", { class: "row center wrap" },
             this.wolfVictim ? h("button", { class: "btn", onclick: () => { this.client?.action(null, "heal"); this.prompt = null; this.render(); } }, "💚 Soigner") : "",
-            h("button", { class: "btn", onclick: () => { this.witchMode = true; this.render(); } }, "☠️ Empoisonner"),
+            h("button", { class: "btn", onclick: () => { this.exileMode = true; this.render(); } }, "🛡️ Rituel d'exil"),
             h("button", { class: "btn ghost", onclick: () => { this.client?.action(null, "skip"); this.prompt = null; this.render(); } }, "Passer"),
           ),
         ];
@@ -350,8 +364,8 @@ export class Game {
     if (!this.prompt) return;
     const k = this.prompt.kind;
     if (k === "vote") { this.client?.vote(id); return; } // can change until tally
-    if (k === "ombiasy") { if (this.witchMode) { this.client?.action(id, "poison"); this.witchMode = false; this.prompt = null; this.render(); } return; }
-    // zazavavindrano / kalanoro / kinoly / mpamosavy / mpisikidy / songomby / mpihaza: single pick
+    if (k === "ombiasy") { if (this.exileMode) { this.client?.action(id, "exile"); this.exileMode = false; this.prompt = null; this.render(); } return; }
+    // zazavavindrano / kalanoro / kinoly / mpamosavy / mpisikidy / songomby / fanany: single pick
     this.client?.action(id);
     this.prompt = null; this.render();
   }
@@ -379,4 +393,7 @@ function statusClass(s: MissionStatus): string {
 }
 function rewardStatusLabel(status: PlayerMissionSheet["rewards"][number]["status"], usesLeft: number): string {
   return status === "unlocked" ? `${usesLeft} usage` : status === "used" ? "utilisé" : "verrouillé";
+}
+function teamLabel(team: RoleInfo["team"]): string {
+  return team === "songomby" ? "camp Songomby" : team === "neutre" ? "neutre" : "village";
 }

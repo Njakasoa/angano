@@ -66,7 +66,7 @@ class Game {
     const targets: string[] = m.targets.map((t: any) => t.id);
     const pick = (id?: string) => this.send(c, { k: "action", targetId: id && targets.includes(id) ? id : targets[0] });
     switch (m.kind) {
-      case "zazavavindrano": case "kalanoro": case "kinoly": case "mpisikidy": case "mpamosavy": case "mpihaza": pick(targets[0]); break;
+      case "zazavavindrano": case "kalanoro": case "kinoly": case "mpisikidy": case "mpamosavy": case "fanany": pick(targets[0]); break;
       case "songomby": pick(this.firstAliveNonSongombyTeam()); break;
       case "ombiasy": this.send(c, { k: "action", targetId: null, extra: "skip" }); break;
       case "vote": this.send(c, { k: "vote", targetId: this.firstAliveSongombyTeam() ?? targets[0] }); break;

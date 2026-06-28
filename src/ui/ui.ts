@@ -31,12 +31,18 @@ export class UI {
   // persistent stage refs
   private bannerImg?: El; private bannerTitle?: El; private bannerText?: El; private dayEl?: El;
   private villageEl?: El; private panelEl?: El; private muteBtn?: HTMLButtonElement; private timerBar?: El;
+  private phaseIntroEl?: El; private phaseIntroTimer?: number;
   onToggleMute?: () => void;
 
   constructor(private root: El) {}
-  private mount(el: El) { this.screen?.remove(); this.screen = el; this.root.append(el); }
+  private mount(el: El) { this.clearPhaseIntro(); this.screen?.remove(); this.screen = el; this.root.append(el); }
   private name(): string { return (localStorage.getItem("angano_name") || "").trim(); }
   private saveName(n: string) { localStorage.setItem("angano_name", n); }
+  private clearPhaseIntro() {
+    if (this.phaseIntroTimer) { clearTimeout(this.phaseIntroTimer); this.phaseIntroTimer = undefined; }
+    this.phaseIntroEl?.remove();
+    this.phaseIntroEl = undefined;
+  }
 
   // ── menu ──
   showMenu(onPlay: (name: string, room: string | null) => void) {
@@ -184,7 +190,7 @@ export class UI {
     ));
   }
   inStage() { return !!this.villageEl; }
-  leaveStage() { this.bannerImg = this.villageEl = this.panelEl = this.timerBar = undefined; }
+  leaveStage() { this.clearPhaseIntro(); this.bannerImg = this.villageEl = this.panelEl = this.timerBar = undefined; }
 
   /** Animate the phase countdown bar (depletes over `ms`). 0 hides it. */
   setTimer(ms: number) {
@@ -197,14 +203,24 @@ export class UI {
   }
 
   /** Full-screen phase flourish: the phase art + title, then it dissolves. Tap to skip. */
-  phaseIntro(imageKey: string, title: string, text: string) {
+  phaseIntro(imageKey: string, title: string, text: string, opts: { phaseMs?: number } = {}) {
+    this.clearPhaseIntro();
     const el = h("div", { class: "phase-intro in", style: `background-image:url(${imageUrl(imageKey)})` },
       h("div", { class: "pi-title" }, title),
       text ? h("div", { class: "pi-text" }, text) : "");
-    const close = () => { if (!el.isConnected) return; el.classList.remove("in"); el.classList.add("out"); setTimeout(() => el.remove(), 400); };
+    let closing = false;
+    const close = () => {
+      if (closing || !el.isConnected) return;
+      closing = true;
+      if (this.phaseIntroTimer) { clearTimeout(this.phaseIntroTimer); this.phaseIntroTimer = undefined; }
+      if (this.phaseIntroEl === el) this.phaseIntroEl = undefined;
+      el.classList.remove("in"); el.classList.add("out");
+      setTimeout(() => el.remove(), 400);
+    };
     el.addEventListener("click", close);
+    this.phaseIntroEl = el;
     this.root.append(el);
-    setTimeout(close, 1500);
+    this.phaseIntroTimer = window.setTimeout(close, phaseIntroDurationMs(title, text, opts.phaseMs));
   }
 
   setBanner(imageKey: string, title: string, text: string, day: number) {
@@ -257,4 +273,11 @@ export class UI {
   }
 
   el = h;
+}
+
+function phaseIntroDurationMs(title: string, text: string, phaseMs?: number): number {
+  const words = `${title} ${text}`.trim().split(/\s+/).filter(Boolean).length;
+  const readingMs = 1800 + words * 380;
+  const maxMs = phaseMs ? Math.max(5000, Math.min(18_000, Math.floor(phaseMs * 0.45))) : 18_000;
+  return Math.max(5000, Math.min(maxMs, readingMs));
 }

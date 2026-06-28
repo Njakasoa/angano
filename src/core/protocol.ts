@@ -16,6 +16,7 @@ export type Pace = "rapide" | "normal" | "lent";
 export type Conteur = "ia" | "humain";
 export interface GameConfig { songomby: number; roles: string[]; pace?: Pace; manualDeaths?: boolean; theme?: boolean; conteur?: Conteur }
 export interface StoryAmbiance { night: string; dawn: string; debate: string; vote: string }
+export interface StoryComposition { songomby: number; roles: string[]; pace: Pace }
 
 export type AnganoClientMsg =
   | { k: "hello"; name: string }
@@ -30,7 +31,7 @@ export type AnganoClientMsg =
 export type AnganoServerMsg =
   | { k: "lobby"; code: string; hostId: string; narratorId: string | null; selfId: string; config: GameConfig; players: PlayerPublic[] }
   | { k: "role"; role: RoleInfo }
-  | { k: "story"; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string> }
+  | { k: "story"; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string>; composition?: StoryComposition; narratorScript?: string[] }
   | { k: "narrator"; players: NarratorPlayer[]; log: string[] }
   | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string }
   | { k: "prompt"; kind: string; targets: PlayerPublic[]; options?: string[]; deadline: number }

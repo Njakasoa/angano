@@ -20,6 +20,7 @@ export class Game {
   private narratorPlayers: NarratorPlayer[] = [];
   private playerStory: PlayerMissionSheet | null = null;
   private missionSheets: NarratorMissionSheet[] = [];
+  private seenRequestIds = new Set<string>(); // narrator-side: ids already toasted as pending requests
   private log: string[] = [];
   private phase: Phase = "lobby";
   private prompt: { kind: string; targets: string[] } | null = null;
@@ -76,7 +77,7 @@ export class Game {
 
       client.on("lobby", (m) => {
         this.selfId = m.selfId; this.hostId = m.hostId; this.narratorId = m.narratorId; this.players = m.players;
-        this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; // fresh game / rematch
+        this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; this.seenRequestIds.clear(); // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
         this.phase = "lobby";
         if (!this.lobby || !document.querySelector(".players")) {
@@ -94,7 +95,15 @@ export class Game {
       client.on("role", (m) => { this.role = m.role; this.roleReveal = true; this.render(); });
       client.on("playerStory", (m) => { this.playerStory = m.story; this.render(); });
       client.on("story", (m) => { this.story = m; this.render(); });
-      client.on("narrator", (m) => { this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? []; this.render(); });
+      client.on("narrator", (m) => {
+        this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? [];
+        for (const s of this.missionSheets) {
+          if (s.status === "requested") {
+            if (!this.seenRequestIds.has(s.playerId)) { this.seenRequestIds.add(s.playerId); this.ui.toast(`${s.playerName} demande la validation de sa mission.`); }
+          } else this.seenRequestIds.delete(s.playerId);
+        }
+        this.render();
+      });
 
       client.on("phase", (m) => {
         const prev = this.phase;
@@ -256,20 +265,37 @@ export class Game {
       h("div", { class: "mission-row strong" }, h("b", {}, sheet.status === "validated" ? "Titre obtenu" : "Titre"), h("span", {}, sheet.titleReward)),
       ...this.rewardNodes(h, sheet.rewards),
       h("div", { class: "mission-reward" }, `${sheet.titlesEarned} titre${sheet.titlesEarned > 1 ? "s" : ""} gagné${sheet.titlesEarned > 1 ? "s" : ""}`),
+      ...this.missionReviewControl(h, sheet),
     );
+  }
+
+  private missionReviewControl(h: UI["el"], sheet: PlayerMissionSheet): HTMLElement[] {
+    if (sheet.status === "requested") {
+      return [h("div", { class: "mission-review" }, h("button", { class: "btn small", disabled: "" }, "⏳ Demande envoyée au narrateur"))];
+    }
+    if (sheet.status === "pending") {
+      return [h("div", { class: "mission-review" },
+        sheet.reviewRejected ? h("div", { class: "mission-refused" }, "Refusée — tu peux redemander") : "",
+        h("button", { class: "btn small", onclick: () => this.client?.missionReviewRequest() }, "Demander validation"),
+      )];
+    }
+    return [];
   }
 
   private narratorMissionPanel(h: UI["el"]): HTMLElement[] {
     if (!this.missionSheets.length) return [];
-    const pending = this.missionSheets.filter((s) => s.status === "pending").length;
-    const validated = this.missionSheets.filter((s) => s.status === "validated").length;
+    const rank = (s: MissionStatus) => (s === "requested" ? 0 : s === "pending" ? 1 : s === "validated" ? 2 : 3);
+    const sheets = [...this.missionSheets].sort((a, b) => rank(a.status) - rank(b.status));
+    const requests = sheets.filter((s) => s.status === "requested").length;
+    const validated = sheets.filter((s) => s.status === "validated").length;
     return [h("div", { class: "mission-narrator" },
-      h("div", { class: "mission-head" },
-        h("div", { class: "mission-title" }, "Fiches et missions"),
-        h("div", { class: "mission-count" }, `${validated}/${this.missionSheets.length} validées · ${pending} en cours`),
+      h("div", { class: "mission-requests-bar" + (requests ? " active" : "") },
+        h("span", { class: "mission-requests-label" }, "Demandes à traiter"),
+        h("span", { class: "mission-badge" }, String(requests)),
+        h("span", { class: "mission-count" }, `${validated}/${sheets.length} validées`),
       ),
       h("div", { class: "mission-list" },
-        ...this.missionSheets.map((sheet) => h("details", { class: "mission-card " + statusClass(sheet.status), open: sheet.status === "pending" ? "" : false },
+        ...sheets.map((sheet) => h("details", { class: "mission-card " + statusClass(sheet.status), open: sheet.status === "requested" ? "" : false },
           h("summary", {},
             h("span", { class: "mission-card-name" }, `${sheet.playerName} · ${sheet.nameMg}`),
             h("span", { class: "mission-status " + statusClass(sheet.status) }, statusLabel(sheet.status)),
@@ -282,9 +308,10 @@ export class Game {
           h("div", { class: "mission-row strong" }, h("b", {}, sheet.status === "validated" ? "Titre obtenu" : "Titre"), h("span", {}, sheet.titleReward)),
           ...this.rewardNodes(h, sheet.rewards),
           h("div", { class: "mission-actions" },
-            h("button", { class: "btn small", disabled: sheet.status === "validated" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "validated") }, "Valider"),
-            h("button", { class: "btn ghost small", disabled: sheet.status === "failed" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "failed") }, "Rater"),
-            h("button", { class: "btn ghost small", disabled: sheet.status === "pending" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "pending") }, "Rouvrir"),
+            h("button", { class: "btn small", disabled: sheet.status === "validated" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "validated") }, "Accepter"),
+            h("button", { class: "btn small", disabled: sheet.status === "requested" ? false : "", onclick: () => this.setMissionStatus(sheet.playerId, "pending") }, "Refuser"),
+            h("button", { class: "btn ghost small", disabled: sheet.status === "validated" || sheet.status === "failed" ? false : "", onclick: () => this.setMissionStatus(sheet.playerId, "pending") }, "Rouvrir"),
+            h("button", { class: "btn ghost small mission-fail", disabled: sheet.status === "failed" ? "" : false, onclick: () => this.setMissionStatus(sheet.playerId, "failed") }, "Rater définitivement"),
           ),
         )),
       ),
@@ -386,10 +413,10 @@ function storyRoleNames(ids: string[]): string {
   return ids.length ? ids.map((id) => roleDef(id).nameMg).join(", ") : "aucun rôle spécial";
 }
 function statusLabel(s: MissionStatus): string {
-  return s === "validated" ? "validée" : s === "failed" ? "ratée" : "en cours";
+  return s === "validated" ? "validée" : s === "failed" ? "ratée" : s === "requested" ? "demande envoyée" : "en cours";
 }
 function statusClass(s: MissionStatus): string {
-  return s === "validated" ? "ok" : s === "failed" ? "ko" : "wait";
+  return s === "validated" ? "ok" : s === "failed" ? "ko" : s === "requested" ? "req" : "wait";
 }
 function rewardStatusLabel(status: PlayerMissionSheet["rewards"][number]["status"], usesLeft: number): string {
   return status === "unlocked" ? `${usesLeft} usage` : status === "used" ? "utilisé" : "verrouillé";

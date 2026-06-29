@@ -16,7 +16,7 @@ export type Pace = "rapide" | "normal" | "lent";
 export interface GameConfig { songomby: number; roles: string[]; pace?: Pace; manualDeaths?: boolean; theme?: boolean }
 export interface StoryAmbiance { night: string; dawn: string; debate: string; vote: string }
 export interface StoryComposition { songomby: number; roles: string[]; pace: Pace }
-export type MissionStatus = "pending" | "validated" | "failed";
+export type MissionStatus = "pending" | "requested" | "validated" | "failed";
 export type RewardStatus = "locked" | "unlocked" | "used";
 export interface RewardInfo {
   id: string;
@@ -44,6 +44,7 @@ export interface PlayerMissionSheet {
   rewardTitle: string;
   titlesEarned: number;
   status: MissionStatus;
+  reviewRejected?: boolean;
 }
 export interface NarratorMissionSheet extends PlayerMissionSheet {
   playerName: string;
@@ -67,6 +68,7 @@ export type AnganoClientMsg =
   | { k: "action"; targetId: string | null; extra?: string }
   | { k: "vote"; targetId: string | null }
   | { k: "missionStatus"; playerId: string; status: MissionStatus }
+  | { k: "missionReviewRequest" }
   | { k: "nextPhase" }
   | { k: "rematch" };
 

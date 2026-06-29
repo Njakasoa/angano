@@ -1,7 +1,8 @@
 // Angano browser E2E — scenario by scenario, real Chromium, drives each game to its
 // finish and asserts the outcome. Covers: village win, songomby win, Fanany mark,
-// witch heal, reconnect (page reload), rematch, narrator-paced deaths, and the
-// story/mission screens when theme mode is enabled without live AI.
+// witch heal, mission review request (player asks → narrator queue → accept/refuse),
+// reconnect (page reload), rematch, narrator-paced deaths, and the story/mission
+// screens when theme mode is enabled without live AI.
 //
 // Run: requires core-api (:3000) + the Vite dev server (:5173) up.
 //   ANGANO_URL=http://localhost:5173 node scenarios.mjs
@@ -143,6 +144,12 @@ async function driveToFinish({ host, players, roleByName }, mode, maxMs = 70000)
   return { winner, fananyMarkSeen, fananyRevengeSeen: fananyRevengeSeen || (mode.expectFananyRevenge && fananyMarkSeen && winner === "village"), healSeen };
 }
 async function teardown() { for (const c of ctxs.splice(0)) await c.close().catch(() => {}); }
+function pageForRole(g, role) {
+  const name = Object.keys(g.roleByName).find((n) => g.roleByName[n] === role);
+  if (!name) return null;
+  const idx = parseInt(String(name).replace(/^J/, ""), 10) - 1;
+  return g.players[idx] ?? null;
+}
 
 const results = [];
 const ok = (label, cond, extra = "") => { console.log(`${cond ? "✅" : "❌"} ${label}${extra ? " — " + extra : ""}`); results.push([label, cond]); };
@@ -209,9 +216,44 @@ async function scManualDeaths() {
   await teardown();
 }
 
+async function scMissionReview() {
+  const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy", "fanany"] });
+
+  // 1) a player requests validation → button disables
+  const p1 = pageForRole(g, "mpisikidy") || g.players[0];
+  const reqBtn = p1.getByRole("button", { name: /Demander validation/ });
+  await reqBtn.waitFor({ timeout: 8000 });
+  await reqBtn.click(); await sleep(400);
+  ok("Joueur : 'Demande envoyée au narrateur' (bouton désactivé)", (await p1.locator(".mission-review button[disabled]").count()) > 0);
+
+  // 2) narrator sees the badge + the highlighted, opened request card
+  await g.host.waitForSelector(".mission-requests-bar.active", { timeout: 8000 });
+  const badge = (await txt(g.host.locator(".mission-requests-bar.active .mission-badge"))).trim();
+  ok("Narrateur : badge 'Demandes à traiter (1)'", badge === "1", `badge=${badge}`);
+  ok("Narrateur : carte demande surlignée et ouverte", (await g.host.locator(".mission-card.req[open]").count()) > 0);
+
+  // 3) accept → mission validated + reward unlocked on the player sheet
+  await g.host.locator(".mission-card.req").getByRole("button", { name: "Accepter" }).first().click();
+  await sleep(500);
+  ok("Accepter → mission validée + pouvoir débloqué",
+    (await g.host.locator(".mission-card.ok").count()) > 0 && (await p1.locator(".reward-chip.unlocked").count()) > 0);
+
+  // 4) refuse path → player sees 'Refusée' and can re-request
+  const p2 = pageForRole(g, "ombiasy") || g.players[1];
+  const reqBtn2 = p2.getByRole("button", { name: /Demander validation/ });
+  await reqBtn2.waitFor({ timeout: 8000 });
+  await reqBtn2.click(); await sleep(400);
+  await g.host.waitForSelector(".mission-card.req", { timeout: 8000 });
+  await g.host.locator(".mission-card.req").getByRole("button", { name: "Refuser" }).first().click();
+  await sleep(500);
+  ok("Refuser → joueur voit 'Refusée' et peut redemander",
+    (await p2.locator(".mission-refused").count()) > 0 && (await p2.getByRole("button", { name: /Demander validation/ }).count()) > 0);
+  await teardown();
+}
+
 async function main() {
   browser = await chromium.launch();
-  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths]];
+  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths]];
   const filter = process.env.SCENARIO;
   const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
   if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);

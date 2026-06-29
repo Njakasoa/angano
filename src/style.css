@@ -124,6 +124,7 @@ body {
 .mission-status.ok { background: rgba(82, 201, 139, .18); color: #6ee7a8; }
 .mission-status.ko { background: rgba(255, 93, 108, .18); color: #ff9aa5; }
 .mission-status.wait { background: rgba(232, 193, 90, .16); color: var(--gold); }
+.mission-status.req { background: rgba(110, 168, 255, .2); color: #9cc2ff; }
 .mission-text { color: #dfe6ff; font-weight: 700; font-size: .9rem; line-height: 1.35; margin-bottom: 8px; }
 .mission-row { display: grid; grid-template-columns: 86px 1fr; gap: 9px; color: var(--muted); font-weight: 700; font-size: .84rem; padding: 4px 0; border-top: 1px solid #1b2238; }
 .mission-row b { color: var(--moon); }
@@ -133,10 +134,20 @@ body {
 .mission-card { border: 1px solid #263052; border-radius: 12px; padding: 8px 10px; background: #131a2e; }
 .mission-card.ok { border-color: rgba(82, 201, 139, .45); }
 .mission-card.ko { border-color: rgba(255, 93, 108, .45); }
+.mission-card.req { border-color: rgba(110, 168, 255, .6); background: rgba(110, 168, 255, .08); box-shadow: 0 0 0 1px rgba(110, 168, 255, .25) inset; }
 .mission-card summary { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 900; color: #eef1ff; }
 .mission-card summary::-webkit-details-marker { display: none; }
 .mission-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mission-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.mission-actions .mission-fail { margin-left: auto; opacity: .7; }
+.mission-requests-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 7px 10px; border-radius: 10px; background: #131a2e; border: 1px solid var(--line); }
+.mission-requests-bar.active { border-color: rgba(110, 168, 255, .6); background: rgba(110, 168, 255, .12); }
+.mission-requests-label { font-weight: 900; color: #eef1ff; font-size: .86rem; }
+.mission-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #2a3147; color: var(--muted); font-weight: 900; font-size: .8rem; }
+.mission-requests-bar.active .mission-badge { background: #6ea8ff; color: #0a1020; }
+.mission-requests-bar .mission-count { margin-left: auto; }
+.mission-review { margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.mission-refused { color: #ff9aa5; font-weight: 800; font-size: .8rem; }
 .mission-recap-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid #1b2238; font-weight: 800; color: #dfe6ff; }
 .mission-recap-row strong { font-size: .78rem; text-transform: uppercase; }
 .mission-recap-row.ok strong { color: #6ee7a8; }

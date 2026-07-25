@@ -45,14 +45,16 @@ GPT Image 2 n'a pas de verrou de personnage : on répète les traits clés pour 
   sur une natte, fine fumée, lueur d'augure, regard serein.
 - **Ombiasy** — guérisseur couvert d'**ody** (amulettes) et perles, fioles, plantes
   médicinales, braises chaudes, mains usées.
-- **Mpihaza** — chasseur maigre, **sagaie** (et arc dans le dos), habits de raffia/écorce,
-  à l'affût en lisière de forêt.
+- **Fanany** — gardien ancestral solennel en lamba, agenouillé devant des tombeaux des
+  hautes terres en terre rouge ; un grand **serpent sacré** (réincarnation d'un ancêtre
+  noble) s'enroule depuis les pierres tombales, lueur **or** des Razana.
 - **Zazavavindrano** — femme-esprit des eaux, belle et inquiétante, longs cheveux
   ruisselants, peau luisante, à demi immergée dans une rivière sous la lune, roseaux/nénuphars.
 - **Kalanoro** — petit être poilu de la forêt, longs cheveux/ongles, yeux **rouges**,
   **pieds inversés**, accroupi près d'un ruisseau humide.
-- **Kinoly** — revenant d'apparence villageoise ordinaire mais yeux **rouges** faibles et
-  ongles anormalement longs, peau pâle, dissimulé parmi les villageois.
+- **Kinoly** — revenant **neutre** d'apparence villageoise ordinaire, peau **grise
+  cendreuse**, yeux **rouges** faibles s'entrouvrant comme au réveil de la mort, ongles
+  anormalement longs ; dormant puis éveillé, hante ses cibles. Paraît Mponina au sikidy.
 - **Mpamosavy** — sorcier maléfique décharné, gestes de malédiction sur des tombeaux,
   lueur **verte** maladive, cendres et os.
 - **Mponina** — villageois ordinaire en lamba, lampe à huile, regard inquiet, ruelle nocturne.

@@ -16,7 +16,27 @@ const debug = (...args) => { if (process.env.DEBUG_E2E) console.log("[debug]", .
 
 let browser;
 const ctxs = [];
-async function mk() { const c = await browser.newContext({ viewport: { width: 402, height: 840 } }); ctxs.push(c); return c.newPage(); }
+/**
+ * Asset requests seen across every page of the run. Art is addressed by a key the
+ * server sends, so a bad stem shows up only as a blank banner in production — here
+ * it shows up as a 404. Audio is different on purpose: a music key probes its
+ * fallback chain, so a miss on an unproduced track is expected and only the final
+ * resolution matters.
+ */
+const assetMisses = [];
+const assetHits = [];
+async function mk() {
+  const c = await browser.newContext({ viewport: { width: 402, height: 840 } });
+  ctxs.push(c);
+  const page = await c.newPage();
+  page.on("response", (r) => {
+    const url = r.url();
+    if (!url.includes("/assets/")) return;
+    const file = url.split("/").pop();
+    (r.status() >= 400 ? assetMisses : assetHits).push(file);
+  });
+  return page;
+}
 
 async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide", theme = true }) {
   const host = await mk();
@@ -251,9 +271,45 @@ async function scMissionReview() {
   await teardown();
 }
 
+/**
+ * Assets: the codex power gallery is the only place several illustrations appear,
+ * and a mistyped art stem is invisible in the UI — it just renders nothing.
+ */
+async function scAssets() {
+  const page = await mk();
+  await page.goto(URL, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brand");
+
+  await page.getByRole("button", { name: "Les rôles" }).click();
+  await page.waitForSelector(".codex-tile");
+  const tiles = await page.locator(".codex-tile").count();
+  ok("Codex : une tuile par rôle", tiles === 9, `tuiles=${tiles}`);
+
+  // 9 roles carry 15 power banners between them (Mponina has none).
+  const powers = await page.locator(".ct-power-img").count();
+  ok("Codex : galerie des pouvoirs rendue", powers === 15, `vignettes=${powers}`);
+
+  const styles = await page.locator(".ct-power-img").first().getAttribute("style");
+  ok("Codex : les vignettes pointent vers du WebP", /\.webp\)/.test(styles || ""), styles || "");
+
+  // Play a real game so every phase banner and role portrait gets requested.
+  await teardown();
+  const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"] });
+  const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
+  ok("Partie complète jouée pour charger tous les visuels", !!r.winner, `winner=${r.winner}`);
+
+  const imageMisses = assetMisses.filter((f) => /\.(webp|png)$/.test(f));
+  ok("Aucune image en 404 sur une partie complète", imageMisses.length === 0, imageMisses.join(", "));
+
+  // Every night phase must end up with *something* to play, via the chain.
+  const audioHits = new Set(assetHits.filter((f) => f.endsWith(".mp3")));
+  ok("Au moins une ambiance résolue par la chaîne de repli", audioHits.size > 0, `${audioHits.size} pistes chargées`);
+  await teardown();
+}
+
 async function main() {
   browser = await chromium.launch();
-  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths]];
+  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets]];
   const filter = process.env.SCENARIO;
   const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
   if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);

@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build": "bun scripts/check-assets.ts && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check:assets": "bun scripts/check-assets.ts",
+    "gen:audio": "bun scripts/generate-audio.ts",
+    "opt:images": "bun scripts/optimize-images.ts"
   },
   "devDependencies": {
+    "cwebp-bin": "^8.0.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7"
   }

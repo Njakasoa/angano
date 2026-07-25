@@ -1,5 +1,12 @@
-const API_BASE =
+export const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ?? "https://api.njakasoa.xyz";
+
+/**
+ * Resolve a media reference from the server. The API sends narration as a path
+ * (`/v1/tts/<hash>`) so it never has to know its own public origin; an absolute URL
+ * is passed through untouched, which keeps the door open for object storage later.
+ */
+export const apiMediaUrl = (ref: string) => (/^https?:\/\//.test(ref) ? ref : `${API_BASE}${ref}`);
 
 /** Open the Angano websocket as an anonymous guest (token cached for stable id). */
 export async function connectAngano(opts: { room: string; name: string }): Promise<WebSocket> {

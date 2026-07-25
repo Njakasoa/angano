@@ -12,7 +12,7 @@
  * response is a non-trivial audio payload, so a quota error cannot leave a broken
  * stub behind that the fallback chain would then happily "resolve".
  */
-import { mkdir, writeFile, access } from "node:fs/promises";
+import { mkdir, writeFile, access, unlink } from "node:fs/promises";
 import { AMBIANCE, SFX, VOICE } from "./audio-plan.ts";
 
 const KEY = process.env.ELEVENLABS_API_KEY;
@@ -87,6 +87,53 @@ async function post(url: string, body: unknown): Promise<Uint8Array | null> {
   return bytes;
 }
 
+/** Seconds of overlap used to close a loop. Long enough to hide a seam, short
+ *  enough not to eat the phrase. */
+const LOOP_CROSSFADE_S = 3;
+
+/**
+ * Close a generated bed into a seamless loop.
+ *
+ * A composed clip starts and ends cold, so `audio.loop = true` clicks audibly every
+ * time round. Crossfading the tail back over the head removes the seam at build
+ * time, which keeps the player simple — the browser just loops the file.
+ *
+ * Returns the input untouched if ffmpeg is unavailable: a bed with an audible seam
+ * still beats no bed at all.
+ */
+async function seamlessLoop(bytes: Uint8Array): Promise<Uint8Array> {
+  const tmp = `${OUT}.loop-tmp-${Date.now()}`;
+  const src = `${tmp}-in.mp3`;
+  const dst = `${tmp}-out.mp3`;
+  try {
+    await writeFile(src, bytes);
+    const probe = Bun.spawn(
+      ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src],
+      { stdout: "pipe", stderr: "ignore" },
+    );
+    const duration = Number((await new Response(probe.stdout).text()).trim());
+    if (!Number.isFinite(duration) || duration <= LOOP_CROSSFADE_S * 2) return bytes;
+
+    const mid = duration - LOOP_CROSSFADE_S;
+    const filter =
+      `[0]atrim=start=${LOOP_CROSSFADE_S}:end=${mid},asetpts=N/SR/TB[mid];` +
+      `[0]atrim=start=${mid},asetpts=N/SR/TB[tail];` +
+      `[0]atrim=start=0:end=${LOOP_CROSSFADE_S},asetpts=N/SR/TB[head];` +
+      `[tail][head]acrossfade=d=${LOOP_CROSSFADE_S}:c1=tri:c2=tri[xf];` +
+      `[mid][xf]concat=n=2:v=0:a=1[out]`;
+    const ff = Bun.spawn(
+      ["ffmpeg", "-v", "error", "-y", "-i", src, "-filter_complex", filter, "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "128k", dst],
+      { stdout: "ignore", stderr: "ignore" },
+    );
+    if ((await ff.exited) !== 0) { console.warn("  ⚠️  ffmpeg indisponible — boucle non refermée"); return bytes; }
+    return new Uint8Array(await Bun.file(dst).arrayBuffer());
+  } catch {
+    return bytes;
+  } finally {
+    await Promise.all([unlink(src).catch(() => {}), unlink(dst).catch(() => {})]);
+  }
+}
+
 async function produce(label: string, file: string, make: () => Promise<Uint8Array | null>) {
   const path = OUT + file;
   if (!force && (await exists(path))) { console.log(`  ⏭  ${file} (déjà présent)`); return "skipped" as const; }
@@ -125,10 +172,12 @@ async function main() {
   }
 
   if (want.has("--ambiance")) {
-    console.log(`\n🌙 Ambiances (${AMBIANCE.length}) — non bouclées proprement, à écouter avant de committer`);
+    console.log(`\n🌙 Ambiances (${AMBIANCE.length}) — composées puis refermées en boucle`);
     for (const a of AMBIANCE) {
-      count(await produce(a.key, a.file, () =>
-        post(`${BASE}/v1/sound-generation`, { text: a.prompt, duration_seconds: a.seconds, prompt_influence: 0.5 })));
+      count(await produce(a.key, a.file, async () => {
+        const raw = await post(`${BASE}/v1/music`, { prompt: a.prompt, music_length_ms: a.seconds * 1000 });
+        return raw ? await seamlessLoop(raw) : null;
+      }));
     }
   }
 

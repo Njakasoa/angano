@@ -53,22 +53,36 @@ export const VOICE: VoiceSpec[] = [
 ];
 
 /**
- * Looping phase ambiance. Optional (`--ambiance`): generated beds are capped at 22s
- * upstream and do not loop seamlessly, so the recycled placeholders may still sound
- * better. Listen before committing these.
+ * Shared musical bed for every phase, so the score reads as one world. These go
+ * through `/v1/music` (a composer), not the sound-effects model: a bed needs
+ * instrumentation and pulse, not dripping leaves.
+ *
+ * Malagasy instrumentation is the anchor — valiha and marovany (zithers), kabosy,
+ * sodina (flute), hazolahy frame drums, katsa shakers.
+ */
+export const MUSIC_STYLE =
+  "instrumental only, absolutely no vocals, no singing, no words. Dark Malagasy folk score: " +
+  "valiha and marovany plucked zithers, kabosy, sodina bamboo flute, deep hazolahy frame drum, " +
+  "katsa shaker, low drone. Sparse, cinematic, patient, unresolved. Seamless looping bed for a " +
+  "game phase — no intro build, no final cadence, constant intensity throughout";
+
+/**
+ * Looping phase ambiance, one per phase key. Generated at `seconds` then closed
+ * into a seamless loop with an ffmpeg crossfade, so the browser's `loop` never
+ * clicks at the seam.
  */
 export const AMBIANCE: AmbianceSpec[] = [
-  { key: "salon", file: "salon.mp3", seconds: 22, prompt: `${SFX_STYLE}. Calm village evening bed: distant voices, a crackling fire, soft night insects, waiting, unhurried.` },
-  { key: "legende", file: "legende.mp3", seconds: 22, prompt: `${SFX_STYLE}. A storyteller's hush before the tale: slow breathing drum, soft raffia rustle, anticipation, mysterious.` },
-  { key: "nuit_zazavavindrano", file: "nuit_zazavavindrano.mp3", seconds: 22, prompt: `${SFX_STYLE}. River spirit night bed: flowing water, dripping, wet reeds, an eerie feminine hum far away, beautiful and unsettling.` },
-  { key: "nuit_mpamosavy", file: "nuit_mpamosavy.mp3", seconds: 22, prompt: `${SFX_STYLE}. Sorcery night bed: dry bone rattles, ash and embers, a whispered malevolent incantation texture, sickly and creeping.` },
-  { key: "nuit_mpisikidy", file: "nuit_mpisikidy.mp3", seconds: 22, prompt: `${SFX_STYLE}. Divination night bed: seeds falling on a mat in slow patterns, faint smoke, a serene low drone, contemplative.` },
-  { key: "nuit_kalanoro", file: "nuit_kalanoro.mp3", seconds: 22, prompt: `${SFX_STYLE}. Wet forest night bed: dripping leaves, small quick footsteps in mud, a tiny creature's breath, watchful.` },
-  { key: "nuit_kinoly", file: "nuit_kinoly.mp3", seconds: 22, prompt: `${SFX_STYLE}. Revenant night bed: an oppressive silence, a slow dragging step, a faint cold exhale, the dead walking among the living.` },
-  { key: "nuit_songomby", file: "nuit_songomby.mp3", seconds: 22, prompt: `${SFX_STYLE}. Predator night bed: heavy hooves in rice-paddy mud, low guttural breathing, reeds parting, imminent danger.` },
-  { key: "nuit_ombiasy", file: "nuit_ombiasy.mp3", seconds: 22, prompt: `${SFX_STYLE}. Healer night bed: clinking amulets and small vials, warm embers, crushed herbs, careful hands, protective.` },
-  { key: "aube", file: "aube.mp3", seconds: 22, prompt: `${SFX_STYLE}. Dawn bed: first birds, a rooster far off, cool air, the village stirring, fragile relief.` },
-  { key: "debat", file: "debat.mp3", seconds: 22, prompt: `${SFX_STYLE}. Daytime assembly bed: a murmuring crowd, wind over rice terraces, restless tension, accusation brewing.` },
-  { key: "vote", file: "vote.mp3", seconds: 22, prompt: `${SFX_STYLE}. Judgement bed: a slow insistent drum pulse, tightening breath, stones shifting, decision approaching.` },
-  { key: "revelation", file: "revelation.mp3", seconds: 22, prompt: `${SFX_STYLE}. Revelation bed: a long resonant gong decay, ancestral voices sighing, the truth laid bare, solemn.` },
+  { key: "salon", file: "salon.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: a village evening before the tale begins — warm, unhurried, gently expectant. Slow valiha arpeggio, soft shaker, no drums.` },
+  { key: "legende", file: "legende.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the storyteller draws breath — hushed anticipation, a single low drum heartbeat under a lone sodina line.` },
+  { key: "nuit_zazavavindrano", file: "nuit_zazavavindrano.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the river spirit — liquid descending zither figures, glassy high harmonics, beautiful and cold, almost weightless.` },
+  { key: "nuit_mpamosavy", file: "nuit_mpamosavy.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: sorcery — dissonant detuned zither, dry rattling percussion, a sickly bent-note drone creeping upward.` },
+  { key: "nuit_mpisikidy", file: "nuit_mpisikidy.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: divination — sparse contemplative marovany, seeds-on-mat percussion as rhythm, serene and searching.` },
+  { key: "nuit_kalanoro", file: "nuit_kalanoro.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the wet forest — small skittering plucks, damp muted percussion, curious and watchful, never settling.` },
+  { key: "nuit_kinoly", file: "nuit_kinoly.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the revenant — near silence, one sustained low drone, a slow single drum step, oppressive stillness.` },
+  { key: "nuit_songomby", file: "nuit_songomby.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the predator closing in — low insistent frame-drum gallop, growling bass drone, real danger, taut.` },
+  { key: "nuit_ombiasy", file: "nuit_ombiasy.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the healer at work — warm low zither, gentle bell-like amulet chimes, protective and grave.` },
+  { key: "aube", file: "aube.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: dawn after a hard night — a fragile major-leaning sodina melody over soft strings, relief that has not fully arrived.` },
+  { key: "debat", file: "debat.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the village assembly — restless mid-tempo zither ostinato, murmuring low percussion, suspicion tightening.` },
+  { key: "vote", file: "vote.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: judgement approaching — slow relentless drum pulse, rising tension, a held unresolved chord.` },
+  { key: "revelation", file: "revelation.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the truth laid bare — a long resonant gong-like decay, ancestral low strings, solemn and final.` },
 ];

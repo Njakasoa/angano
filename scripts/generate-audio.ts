@@ -17,9 +17,33 @@ import { AMBIANCE, SFX, VOICE } from "./audio-plan.ts";
 
 const KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_NARRATOR ?? "qCDtdqQv5bdcrgWED5k8"; // Arthur Martin (fr)
-const MODEL = process.env.ELEVENLABS_MODEL ?? "eleven_flash_v2_5";
+/**
+ * Keep this in step with core-api's ELEVENLABS_MODEL. These lines are heard in the
+ * same breath as the runtime narration, and the same voice renders differently
+ * from one model to the next.
+ */
+const MODEL = process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2";
 const BASE = process.env.ELEVENLABS_BASE_URL ?? "https://api.elevenlabs.io";
 const OUT = new URL("../public/assets/audio/", import.meta.url).pathname;
+
+/** Voice settings — omitted ones keep the voice's own defaults. */
+function voiceSettings(): Record<string, number> | undefined {
+  const read = (name: string) => {
+    const raw = process.env[name];
+    return raw === undefined || raw === "" ? undefined : Number(raw);
+  };
+  const settings: Record<string, number> = {};
+  const stability = read("ELEVENLABS_STABILITY");
+  const similarity = read("ELEVENLABS_SIMILARITY");
+  const style = read("ELEVENLABS_STYLE");
+  const speed = read("ELEVENLABS_SPEED");
+  if (stability !== undefined) settings.stability = stability;
+  if (similarity !== undefined) settings.similarity_boost = similarity;
+  if (style !== undefined) settings.style = style;
+  if (speed !== undefined) settings.speed = speed;
+  return Object.keys(settings).length ? settings : undefined;
+}
+const SETTINGS = voiceSettings();
 
 const args = new Set(process.argv.slice(2));
 const force = args.has("--force");
@@ -92,11 +116,11 @@ async function main() {
   }
 
   if (want.has("--voice")) {
-    console.log(`\n🎙️  Voix off (${VOICE.length})`);
+    console.log(`\n🎙️  Voix off (${VOICE.length}) — ${MODEL}${SETTINGS ? ` · ${JSON.stringify(SETTINGS)}` : " · réglages par défaut de la voix"}`);
     for (const v of VOICE) {
       count(await produce(v.text.slice(0, 48) + "…", v.file, () =>
         post(`${BASE}/v1/text-to-speech/${VOICE_ID}?output_format=mp3_44100_128`,
-          { text: speakable(v.text), model_id: MODEL })));
+          { text: speakable(v.text), model_id: MODEL, ...(SETTINGS ? { voice_settings: SETTINGS } : {}) })));
     }
   }
 

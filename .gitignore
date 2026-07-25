@@ -7,3 +7,6 @@ dist/
 
 # Windows download metadata
 *:Zone.Identifier
+
+# banc d'essai voix (fichiers audio jetables)
+audition/

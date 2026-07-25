@@ -25,6 +25,7 @@ export class AnganoClient {
   missionStatus(playerId: string, status: MissionStatus) { this.send({ k: "missionStatus", playerId, status }); }
   missionReviewRequest() { this.send({ k: "missionReviewRequest" }); }
   nextPhase() { this.send({ k: "nextPhase" }); }
+  prevPhase() { this.send({ k: "prevPhase" }); }
   rematch() { this.send({ k: "rematch" }); }
   close() { try { this.ws.close(); } catch { /* */ } }
 

@@ -115,6 +115,8 @@ export class UI {
     paceSelect.value = "normal";
     const manualChk = h("button", { class: "chip", "data-on": "0", title: "Le narrateur révèle les morts à son rythme (bouton Continuer)" }, "🗣 Morts annoncées") as HTMLButtonElement;
     const themeChk = h("button", { class: "chip", "data-on": "0", title: "L'IA invente une légende et l'ambiance pour cette partie (sinon partie classique)" }, "✨ Histoire IA") as HTMLButtonElement;
+    const roomChk = h("button", { class: "chip", "data-on": "0", title: "Tout le monde est dans la même pièce : seul le téléphone du narrateur diffuse le son, et le narrateur donne le rythme" }, "🪑 Même pièce") as HTMLButtonElement;
+    const autoChk = h("button", { class: "chip on", "data-on": "1", title: "Les phases s'enchaînent toutes seules. Décoché, le narrateur passe chaque phase à la main." }, "⏱ Avance auto") as HTMLButtonElement;
     const songStep = (d: number) => h("button", { class: "btn ghost step", onclick: () => { songInput.value = String(Math.max(1, Math.min(5, (parseInt(songInput.value) || 1) + d))); pushConfig(); } }, d > 0 ? "+" : "−");
     const songStepper = h("div", { class: "stepper" }, songStep(-1), songInput, songStep(1));
     const startBtn = h("button", { class: "btn big", onclick: o.onStart }, "Lancer la partie") as HTMLButtonElement;
@@ -125,9 +127,18 @@ export class UI {
       h("label", { class: "lbl" }, "Songomby"), songStepper,
       h("label", { class: "lbl" }, "Rôles spéciaux"), roleToggles,
       h("label", { class: "lbl" }, "Rythme"), h("div", { class: "row" }, paceSelect, manualChk),
-      h("label", { class: "lbl" }, "Ambiance"), h("div", { class: "row" }, themeChk));
+      h("label", { class: "lbl" }, "Ambiance"), h("div", { class: "row" }, themeChk),
+      h("label", { class: "lbl" }, "Table"), h("div", { class: "row wrap" }, roomChk, autoChk));
 
-    const pushConfig = () => o.onConfig({ songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)), roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!), pace: paceSelect.value as "rapide" | "normal" | "lent", manualDeaths: manualChk.getAttribute("data-on") === "1", theme: themeChk.getAttribute("data-on") === "1" });
+    const pushConfig = () => o.onConfig({
+      songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)),
+      roles: [...roleToggles.querySelectorAll<HTMLButtonElement>(".chip.on")].map((b) => b.getAttribute("data-r")!),
+      pace: paceSelect.value as "rapide" | "normal" | "lent",
+      manualDeaths: manualChk.getAttribute("data-on") === "1",
+      theme: themeChk.getAttribute("data-on") === "1",
+      sameRoom: roomChk.getAttribute("data-on") === "1",
+      autoAdvance: autoChk.getAttribute("data-on") === "1",
+    });
     OPTIONAL_ROLES.forEach((r) => {
       roleToggles.append(h("button", { class: "chip on" + roleToggleClass(r.team), "data-r": r.id, title: r.desc, onclick: (e: Event) => { (e.currentTarget as HTMLButtonElement).classList.toggle("on"); pushConfig(); } }, r.nameMg));
     });
@@ -141,6 +152,15 @@ export class UI {
     paceSelect.onchange = pushConfig;
     manualChk.onclick = () => { const on = manualChk.getAttribute("data-on") !== "1"; manualChk.setAttribute("data-on", on ? "1" : "0"); manualChk.classList.toggle("on", on); pushConfig(); };
     themeChk.onclick = () => { const on = themeChk.getAttribute("data-on") !== "1"; themeChk.setAttribute("data-on", on ? "1" : "0"); themeChk.classList.toggle("on", on); pushConfig(); };
+    // Around a table the narrator normally calls the beats, so switching the mode on
+    // flips auto-advance off — the checkbox is still there to put it back.
+    roomChk.onclick = () => {
+      const on = roomChk.getAttribute("data-on") !== "1";
+      roomChk.setAttribute("data-on", on ? "1" : "0"); roomChk.classList.toggle("on", on);
+      autoChk.setAttribute("data-on", on ? "0" : "1"); autoChk.classList.toggle("on", !on);
+      pushConfig();
+    };
+    autoChk.onclick = () => { const on = autoChk.getAttribute("data-on") !== "1"; autoChk.setAttribute("data-on", on ? "1" : "0"); autoChk.classList.toggle("on", on); pushConfig(); };
     narBtn.onclick = () => o.onNarrator(narBtn.getAttribute("data-on") !== "1");
 
     this.mount(h("div", { class: "screen center" },
@@ -173,6 +193,8 @@ export class UI {
       paceSelect.value = m.config.pace ?? "normal";
       const md = !!m.config.manualDeaths; manualChk.setAttribute("data-on", md ? "1" : "0"); manualChk.classList.toggle("on", md);
       const th = !!m.config.theme; themeChk.setAttribute("data-on", th ? "1" : "0"); themeChk.classList.toggle("on", th);
+      const sr = !!m.config.sameRoom; roomChk.setAttribute("data-on", sr ? "1" : "0"); roomChk.classList.toggle("on", sr);
+      const aa = m.config.autoAdvance ?? !sr; autoChk.setAttribute("data-on", aa ? "1" : "0"); autoChk.classList.toggle("on", aa);
       startBtn.style.display = isHost ? "" : "none";
       const seats = m.players.filter((p) => p.id !== m.narratorId).length;
       startBtn.disabled = !m.narratorId || seats < 4;

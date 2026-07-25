@@ -39,18 +39,62 @@ retenu.
 
 ## Casting
 
-| Emploi | Voix | ID |
-|---|---|---|
-| Conteur (tout le récit) | **Arthur Martin** — `language: fr`, `narrative_story`, calme | `qCDtdqQv5bdcrgWED5k8` |
+Une seule voix porte tout le récit : c'est le fil rouge du conte. Le défaut actuel est
+**Arthur Martin** (`qCDtdqQv5bdcrgWED5k8`, `language: fr`, `narrative_story`) — un choix
+provisoire, retenu sur ses métadonnées, **pas à l'oreille**.
 
-Une seule voix porte tout le récit : c'est le fil rouge du conte. Le choix est
-**configurable** — `ELEVENLABS_VOICE_NARRATOR` côté core-api, et la même variable pour
-`scripts/generate-audio.ts`.
+### Choisir à l'oreille
+
+```bash
+export ELEVENLABS_API_KEY=sk_...
+
+bun scripts/audition-voice.ts list --fr              # les voix françaises du compte
+bun scripts/audition-voice.ts voices id1,id2,id3     # la même réplique, chaque voix
+bun scripts/audition-voice.ts models --voice id1     # la même voix, chaque modèle
+bun scripts/audition-voice.ts sweep stability --voice id1
+bun scripts/audition-voice.ts one --voice id1 --stability 0.35 --style 0.55 --speed 0.92
+```
+
+Tout sort dans `audition/` (gitignoré), sur de **vraies répliques du jeu** (`--sample
+intro|songomby|kinoly|fanany|mort|victoire`) : juger sur un « bonjour » ne dit rien.
+
+Une fois la voix retenue : `ELEVENLABS_VOICE_NARRATOR` dans `core-api/.env`, puis
+`bun run gen:audio --voice --force` pour refaire les 11 voix off statiques.
 
 > ⚠️ **Choisis une voix française.** Une voix entraînée en anglais lit le français avec
-> un accent marqué, même sur un modèle multilingue. `Gabriel - French high quality`
-> paraissait idéal mais a été **désactivé par son propriétaire** (403 `voice_disabled`) —
-> vérifier la disponibilité avant de committer un ID.
+> un accent marqué, même sur un modèle multilingue. Et une voix peut être **désactivée
+> par son propriétaire** : `Gabriel - French high quality` paraissait idéal mais renvoie
+> 403 `voice_disabled`. Toujours tester avant de committer un ID.
+
+## Modèle et réglages
+
+Mesuré sur une réplique de narration typique :
+
+| Modèle | Latence | Emploi |
+|---|---|---|
+| `eleven_v3` | 3 572 ms | le plus expressif ; trop lent pour le runtime |
+| `eleven_multilingual_v2` | 1 362 ms | **défaut des deux côtés** |
+| `eleven_flash_v2_5` | 544 ms | basse latence, le moins expressif |
+
+Le warm runtime enchaîne ~10 répliques à 4 en parallèle dans un budget de 12 s :
+`multilingual_v2` y tient largement tout en lisant bien mieux que `flash`.
+
+> ⚠️ **Garde le même modèle des deux côtés** (`ELEVENLABS_MODEL` dans core-api et pour
+> `gen:audio`). Une même voix ne rend pas pareil d'un modèle à l'autre : le conteur
+> changerait imperceptiblement de caractère entre une révélation de rôle (fichier
+> statique) et le récit (synthèse runtime).
+
+Réglages, tous optionnels — omis, la voix garde ses propres défauts :
+
+| Variable | Effet |
+|---|---|
+| `ELEVENLABS_STABILITY` | bas = expressif et varié · haut = plat et constant |
+| `ELEVENLABS_STYLE` | exagération du jeu d'acteur ; instable au-delà de ~0.6 |
+| `ELEVENLABS_SPEED` | < 1 = plus lent et plus grave (0.7–1.2) |
+| `ELEVENLABS_SIMILARITY` | fidélité au timbre d'origine |
+
+Ils entrent dans la **clé de cache** côté serveur : re-régler la stabilité ne resert
+pas l'ancien rendu. Sur `eleven_v3`, `stability` n'accepte que 3 paliers (0, 0.5, 1).
 
 ### Prononciation du malgache
 Une voix française lit « Songomby » à la française et le massacre. Deux règles

@@ -33,7 +33,12 @@ async function mk() {
     const url = r.url();
     if (!url.includes("/assets/")) return;
     const file = url.split("/").pop();
-    (r.status() >= 400 ? assetMisses : assetHits).push(file);
+    // A status check alone is worthless here: the dev server answers an unknown
+    // path with the SPA fallback — 200 text/html. A missing asset is therefore an
+    // HTML body where an image or an mp3 was expected.
+    const type = r.headers()["content-type"] || "";
+    const missing = r.status() >= 400 || type.startsWith("text/html");
+    (missing ? assetMisses : assetHits).push(file);
   });
   return page;
 }
@@ -302,12 +307,17 @@ async function scAssets() {
   // Power art is excluded: five illustrations are still to be produced (tracked by
   // `bun run check:assets`, which lists them as warnings), and the codex renders
   // their tiles regardless.
-  const imageMisses = assetMisses.filter((f) => /\.(webp|png)$/.test(f) && !f.startsWith("power_"));
-  ok("Aucun portrait ni décor en 404 sur une partie complète", imageMisses.length === 0, imageMisses.join(", "));
+  const imageMisses = [...new Set(assetMisses.filter((f) => /\.(webp|png)$/.test(f) && !f.startsWith("power_")))];
+  ok("Aucun portrait ni décor manquant sur une partie complète", imageMisses.length === 0, imageMisses.join(", "));
 
-  // Every night phase must end up with *something* to play, via the chain.
+  // Sanity-check the detector itself: the five unproduced power banners MUST be
+  // seen as missing, otherwise the assertion above proves nothing.
+  const powerMisses = [...new Set(assetMisses.filter((f) => f.startsWith("power_")))];
+  ok("Le détecteur repère bien les visuels absents", powerMisses.length > 0, `${powerMisses.length} pouvoirs à produire`);
+
+  // Every phase must end up with *something* to play, via the fallback chain.
   const audioHits = new Set(assetHits.filter((f) => f.endsWith(".mp3")));
-  ok("Au moins une ambiance résolue par la chaîne de repli", audioHits.size > 0, `${audioHits.size} pistes chargées`);
+  ok("Ambiances résolues par la chaîne de repli", audioHits.size >= 5, `${audioHits.size} pistes distinctes chargées`);
   await teardown();
 }
 

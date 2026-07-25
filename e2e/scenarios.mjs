@@ -23,6 +23,7 @@ const ctxs = [];
  * fallback chain, so a miss on an unproduced track is expected and only the final
  * resolution matters.
  */
+const pageErrors = [];
 const assetMisses = [];
 const assetHits = [];
 async function mk() {
@@ -30,6 +31,8 @@ async function mk() {
   ctxs.push(c);
   const page = await c.newPage();
   page.assets = [];   // per-page, so a scenario can ask what THIS device fetched
+  page.on("pageerror", (e) => { pageErrors.push(String(e.message).slice(0, 160)); });
+  page.on("console", (m) => { if (m.type() === "error") pageErrors.push(m.text().slice(0, 160)); });
   page.on("response", (r) => {
     const url = r.url();
     if (!url.includes("/assets/")) return;
@@ -141,7 +144,7 @@ async function drivePlayer(p, mode, voteName) {
   }
   if (/Débat/i.test(title) && mode.markTargetName) {
     const card = p.locator(`.pcard.target:has-text("${mode.markTargetName}")`);
-    if (await card.count().catch(() => 0)) { await card.first().click().catch(() => {}); return; }
+    if (await card.count().catch(() => 0)) { await card.first().click({ timeout: 2000 }).catch(() => {}); return; }
   }
   if (/Vote/i.test(title) && voteName) {
     const card = p.locator(`.pcard.target:has-text("${voteName}")`);
@@ -150,9 +153,10 @@ async function drivePlayer(p, mode, voteName) {
   await targets.first().click().catch(() => {});
 }
 async function driveToFinish({ host, players, roleByName }, mode, maxMs = 70000) {
-  const t0 = Date.now(); let fananyMarkSeen = false; let fananyRevengeSeen = false; let healSeen = false;
+  const t0 = Date.now(); let fananyMarkSeen = false; let fananyRevengeSeen = false; let healSeen = false; let lastLog = ""; let lastNt = ""; let heldFor = 0; let advancedFor = "";
   while (Date.now() - t0 < maxMs) {
     const logText = await txt(host.locator(".nar-log"));
+    if (logText.trim()) lastLog = logText;
     if (/Marque funeste/i.test(logText)) fananyMarkSeen = true;
     if (/Vengeance des Razana/i.test(logText)) fananyRevengeSeen = true;
     if (await finishWinner(players)) break;
@@ -165,11 +169,35 @@ async function driveToFinish({ host, players, roleByName }, mode, maxMs = 70000)
     else if (mode.vote === "name") voteName = mode.voteName && alive.includes(mode.voteName) ? mode.voteName : alive.find((nm) => !SONGOMBY_TEAM.has(roleByName[nm]));
     debug("phase", nt, "alive", alive, "voteName", voteName, "voteMode", mode.vote);
     for (const p of players) await drivePlayer(p, mode, voteName).catch(() => {});
-    if (/Débat|Aube/i.test(nt)) { const b = host.locator(".panel .btn.big"); if (await b.count().catch(() => 0)) await b.first().click().catch(() => {}); }
+    // The narrator advances dawn immediately, but NOT the debate: cutting it after a
+    // single poll leaves day-time actors (the Fanany's mark) one ~200ms window to act,
+    // which is a race the real game never has — a debate lasts a minute.
+    heldFor = nt === lastNt ? heldFor + 1 : 0;
+    lastNt = nt;
+    // Advance ONCE per phase, and give the day its own beat.
+    //
+    // Dawn lasts ~2.5s — a dozen polls — so clicking on each of them pushes straight
+    // through the debate and the day-time actor (the Fanany's mark) never gets a
+    // turn. Advancing once is not enough on its own either: the banner can still read
+    // "Aube" while the server has moved on, so the debate can pass unseen between two
+    // polls. Pausing after the dawn advance gives the debate a window in wall-clock
+    // time rather than in titles, which is what the real 60s debate has.
+    // Dawn is left to its own 2.5s timer unless the scenario is specifically testing
+    // narrator-paced deaths: pressing it only races the server, and a tap that lands
+    // after the timer has already fired eats the debate's advance instead — which is
+    // how the Fanany's day-time mark loses its turn. The debate is advanced as soon
+    // as the mark has landed, so the run stays inside its time budget.
+    const wantAdvance = (mode.manualDeaths && /Aube/i.test(nt))
+      || (/Débat/i.test(nt) && (!mode.markTargetName || fananyMarkSeen));
+    if (wantAdvance && nt !== advancedFor) {
+      advancedFor = nt;
+      const b = host.locator(".panel .btn.big");
+      if (await b.count().catch(() => 0)) await b.first().click().catch(() => {});
+    }
     await sleep(220);
   }
   const winner = await finishWinner(players);
-  return { winner, fananyMarkSeen, fananyRevengeSeen: fananyRevengeSeen || (mode.expectFananyRevenge && fananyMarkSeen && winner === "village"), healSeen };
+  return { lastLog, winner, fananyMarkSeen, fananyRevengeSeen: fananyRevengeSeen || (mode.expectFananyRevenge && fananyMarkSeen && winner === "village"), healSeen };
 }
 async function teardown() { for (const c of ctxs.splice(0)) await c.close().catch(() => {}); }
 function pageForRole(g, role) {
@@ -200,6 +228,8 @@ async function scFananyMark() {
   const songomby = Object.keys(g.roleByName).find((n) => g.roleByName[n] === "songomby");
   const spare = Object.keys(g.roleByName).find((n) => g.roleByName[n] !== "fanany" && !SONGOMBY_TEAM.has(g.roleByName[n]));
   const r = await driveToFinish(g, { vote: "name", voteName: fanany, nightTargetName: spare, markTargetName: songomby, expectFananyRevenge: true, ombiasy: "skip" });
+  if (pageErrors.length) console.log("   [erreurs page]", [...new Set(pageErrors)].slice(0, 5).join(" | "));
+  console.log("   [journal narrateur]", (r.lastLog || "(vide)").replace(/\s+/g, " ").slice(0, 600));
   ok("Fanany pose une Marque funeste", r.fananyMarkSeen, `fanany=${fanany}`);
   ok("Fanany déclenche la vengeance des Razana", r.fananyRevengeSeen, `songomby=${songomby}, winner=${r.winner}`);
   ok("Partie terminée après le Fanany", !!r.winner, `winner=${r.winner}`);
@@ -239,7 +269,7 @@ async function scRematch() {
 }
 async function scManualDeaths() {
   const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy", "mpamosavy"], manualDeaths: true });
-  const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" }, 90000);
+  const r = await driveToFinish(g, { vote: "village", ombiasy: "skip", manualDeaths: true }, 90000);
   ok("Morts annoncées par narrateur → partie terminée", !!r.winner, `winner=${r.winner}`);
   await teardown();
 }
@@ -363,9 +393,38 @@ async function scRemoteAudio() {
   await teardown();
 }
 
+/**
+ * Recorded narration pack. The real risk is not "does a file exist" — check:assets
+ * covers that — but whether the text the server sends still MATCHES the text the
+ * pack was recorded from. One reworded preset line and the legend goes silent with
+ * nothing in the console. Requires ANGANO_STORY_PRESET=lanternes-mangrove.
+ */
+async function scPack() {
+  const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"], theme: true });
+  const heard = () => [...g.players, g.host].flatMap((p) => p.assets).filter((f) => f.startsWith("vo_lm_"));
+
+  await sleep(2500);
+  const prose = heard().filter((f) => f.includes("_prose_"));
+  ok("La prose de la légende est jouée depuis le pack", prose.length > 0,
+    prose.length ? prose.slice(0, 3).join(", ") : "aucune — le texte du serveur ne correspond plus au pack");
+
+  const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
+  ok("Partie menée à son terme", !!r.winner, `winner=${r.winner}`);
+
+  const cues = heard().filter((f) => /vo_lm_(aube|reveal|vote|razana)_/.test(f));
+  ok("Les répliques d'événement sont jouées", cues.length > 0, [...new Set(cues)].slice(0, 4).join(", "));
+
+  // Each cue family hangs off a different event, so one firing proves nothing about
+  // the others: check the mapping reached dawn, a role reveal AND a verdict.
+  const families = new Set(cues.map((f) => f.replace(/^vo_lm_/, "").split("_")[0]));
+  ok("Les trois familles de répliques se déclenchent", families.has("aube") && families.has("reveal") && families.has("vote"),
+    [...families].join(", "));
+  await teardown();
+}
+
 async function main() {
   browser = await chromium.launch();
-  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets], ["sameRoom", scSameRoom], ["remoteAudio", scRemoteAudio]];
+  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets], ["sameRoom", scSameRoom], ["remoteAudio", scRemoteAudio], ["pack", scPack]];
   const filter = process.env.SCENARIO;
   const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
   if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);

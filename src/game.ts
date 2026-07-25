@@ -1,6 +1,7 @@
 import { UI } from "./ui/ui.ts";
 import { AudioEngine } from "./audio/engine.ts";
 import { connectAngano, apiMediaUrl } from "./net/online.ts";
+import { packFor, proseFile, cueFile, type StoryPack } from "./audio/packs/index.ts";
 import { AnganoClient } from "./net/transport.ts";
 import { roleDef, imageUrl } from "./core/roles.ts";
 import type {
@@ -33,6 +34,7 @@ export class Game {
   private journal: string[] = [];
   private story: Extract<AnganoServerMsg, { k: "story" }> | null = null;
   private storyIntroShown = false;
+  private pack: StoryPack | null = null;   // recorded narration for this legend, if any
   private sameRoom = false;
   private canRewind = false;
   private manualPacing = false;
@@ -98,7 +100,7 @@ export class Game {
         this.selfId = m.selfId; this.hostId = m.hostId; this.narratorId = m.narratorId; this.players = m.players;
         this.sameRoom = !!m.config.sameRoom;
         this.applyAudioRouting();
-        this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; this.seenRequestIds.clear(); // fresh game / rematch
+        this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; this.seenRequestIds.clear(); this.pack = null; // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
         this.phase = "lobby";
         if (!this.lobby || !document.querySelector(".players")) {
@@ -123,7 +125,7 @@ export class Game {
         this.playerStory = m.story; this.render();
         if (!wasValidated && m.story.status === "validated") void this.amb.sfx("mission_validated");
       });
-      client.on("story", (m) => { this.story = m; this.render(); });
+      client.on("story", (m) => { this.story = m; this.pack = packFor(m.storyId); this.render(); });
       client.on("narrator", (m) => {
         this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? [];
         this.canRewind = !!m.canRewind;
@@ -150,12 +152,12 @@ export class Game {
         if (this.story && firstNight && !this.storyIntroShown) {
           this.storyIntroShown = true;
           this.ui.phaseIntro(m.imageKey, this.story.title, this.story.intro, { phaseMs: m.durationMs });
-          this.narrate(this.story.introVoiceUrl);
+          this.narrate(this.story.introVoiceUrl, this.story.intro, true); // legend: nothing to click yet
         } else if (headline && prev !== m.phase) {
           this.ui.phaseIntro(m.imageKey, m.title, m.text, { phaseMs: m.durationMs });
-          this.narrate(m.voiceUrl);
+          this.narrate(m.voiceUrl, m.text);
         } else {
-          this.narrate(m.voiceUrl);
+          this.narrate(m.voiceUrl, m.text);
         }
         this.ui.setBanner(m.imageKey, m.title, m.text, m.day);
         this.ui.setTimer(m.durationMs);
@@ -192,11 +194,23 @@ export class Game {
         // The server tags a death with its art when the cause has its own scene
         // (the Razana revenge); otherwise the dawn banner already carries it.
         if (m.artKey) this.ui.phaseIntro(m.artKey, "Vengeance des Razana", m.text);
-        this.narrate(m.voiceUrl);
+        // The recorded voice never says a name — the screen already shows who.
+        const cues = [
+          m.ids.length === 0 ? "aube_personne" : m.ids.length === 1 ? "aube_une_mort" : "aube_plusieurs_morts",
+          ...(m.artKey === "power_fanany_vengeance" ? ["razana_vengeance"] : []),
+          ...m.reveals.map((r) => `reveal_${r.roleId}`),
+        ];
+        if (!this.narrateCues(cues)) this.narrate(m.voiceUrl, m.text);
         setTimeout(() => { this.dying = []; this.render(); }, 800);
       });
       client.on("voteState", (m) => { this.voteTally = {}; for (const t of m.tally) this.voteTally[t.id] = t.votes; this.render(); });
-      client.on("voteResult", (m) => { void this.amb.sfx("vote_result"); this.ui.toast(m.eliminatedId ? `${this.nameOf(m.eliminatedId)} est éliminé (${m.nameMg}).` : "Personne n'est éliminé."); });
+      client.on("voteResult", (m) => {
+        void this.amb.sfx("vote_result");
+        this.narrateCues(m.eliminatedId
+          ? ["vote_sentence", ...(m.roleId ? [`reveal_${m.roleId}`] : [])]
+          : ["vote_personne"]);
+        this.ui.toast(m.eliminatedId ? `${this.nameOf(m.eliminatedId)} est éliminé (${m.nameMg}).` : "Personne n'est éliminé.");
+      });
       client.on("state", (m) => { this.players = m.players; this.phase = m.phase; this.render(); });
 
       client.on("finish", (m) => {
@@ -206,8 +220,8 @@ export class Game {
         const vimg = m.winner === "songomby" ? "scene_victory_songomby" : "scene_victory_village";
         this.ui.phaseIntro(vimg, winnerTitle(m.winner), m.text);
         // the AI writes a bespoke ending; without it, fall back to the recorded line
-        this.narrate(m.voiceUrl);
-        if (!m.voiceUrl) void this.amb.speak(m.winner === "songomby" ? "vo_victory_songomby" : "vo_victory_village");
+        this.narrate(m.voiceUrl, m.text);
+        if (!m.voiceUrl && !proseFile(this.pack, m.text)) void this.amb.speak(m.winner === "songomby" ? "vo_victory_songomby" : "vo_victory_village");
         this.ui.setBanner(vimg, winnerTitle(m.winner), m.text, 0);
         this.ui.setVillage(this.players, this.selfId, this.narratorId, { roles: reveal });
         const h = this.ui.el;
@@ -266,7 +280,7 @@ export class Game {
         ...this.storyPanel(h, true),
         ...this.narratorMissionPanel(h),
         h("div", { class: "nar-log" }, ...this.log.slice(-8).map((l) => h("div", {}, l))),
-        h("button", { class: "btn big", onclick: () => this.client?.nextPhase() }, advLabel),
+        h("button", { class: "btn big", onclick: () => this.client?.nextPhase(this.phase) }, advLabel),
       );
       return;
     }
@@ -474,9 +488,37 @@ export class Game {
    * it lasts — otherwise the art dissolves mid-sentence and the narration finishes
    * over the village board.
    */
-  private narrate(ref: string | undefined) {
-    if (!ref) return;
-    void this.amb.speak(apiMediaUrl(ref)).then((ms) => { if (ms) this.ui.extendPhaseIntro(ms); });
+  /**
+   * Speak a server-sent line, preferring a recorded pack clip over runtime synthesis:
+   * same voice every game, no latency, no cost.
+   *
+   * `hold` keeps the full-screen flourish up for the whole line, and is only ever
+   * right for the opening legend — nothing is expected of the player there. On a
+   * normal phase the overlay swallows taps, so holding it for a six-second line
+   * locks the Fanany out of the debate it is supposed to act in. Everywhere else the
+   * narration simply plays on over the village.
+   */
+  private narrate(ref: string | undefined, text?: string, hold = false) {
+    const recorded = proseFile(this.pack, text);
+    const source = recorded ? `/assets/audio/${recorded}` : ref ? apiMediaUrl(ref) : undefined;
+    if (!source) return;
+    const spoken = this.amb.speak(source);
+    if (hold) void spoken.then((ms) => { if (ms) this.ui.extendPhaseIntro(ms); });
+  }
+
+  /**
+   * Play recorded cues back to back.
+   *
+   * Unlike a phase line, these must NOT hold the full-screen flourish: a dawn runs
+   * three clips and change, and pinning the overlay for that long covers the board
+   * the players are meant to be reading — and clicking. The narration simply carries
+   * on over the village.
+   */
+  private narrateCues(labels: string[]) {
+    const files = labels.map((l) => cueFile(this.pack, l)).filter(Boolean) as string[];
+    if (!files.length) return false;
+    void this.amb.speakSequence(files.map((f) => `/assets/audio/${f}`));
+    return true;
   }
 
   private note(entry: string) { this.journal.push(entry); if (this.journal.length > 20) this.journal.shift(); this.render(); }

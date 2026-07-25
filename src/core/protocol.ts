@@ -82,7 +82,7 @@ export type AnganoClientMsg =
   | { k: "vote"; targetId: string | null }
   | { k: "missionStatus"; playerId: string; status: MissionStatus }
   | { k: "missionReviewRequest" }
-  | { k: "nextPhase" }
+  | { k: "nextPhase"; from?: Phase }
   | { k: "prevPhase" }
   | { k: "rematch" };
 
@@ -90,7 +90,7 @@ export type AnganoServerMsg =
   | { k: "lobby"; code: string; hostId: string; narratorId: string | null; selfId: string; config: GameConfig; players: PlayerPublic[] }
   | { k: "role"; role: RoleInfo }
   | { k: "playerStory"; story: PlayerMissionSheet }
-  | { k: "story"; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string>; composition?: StoryComposition; narratorScript?: string[]; introVoiceUrl?: string }
+  | { k: "story"; storyId?: string; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string>; composition?: StoryComposition; narratorScript?: string[]; introVoiceUrl?: string }
   | { k: "narrator"; players: NarratorPlayer[]; log: string[]; missionSheets?: NarratorMissionSheet[]; canRewind?: boolean }
   | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string; voiceUrl?: string; manualPacing?: boolean }
   | { k: "prompt"; kind: string; targets: PlayerPublic[]; options?: string[]; deadline: number }

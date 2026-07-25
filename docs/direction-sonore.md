@@ -106,6 +106,35 @@ La table est dans `core-api/src/games/angano/pronunciation.ts`, **dupliquée** d
 prononcée change ; tout ce qui est affiché garde son orthographe réelle.* En ajoutant
 un rôle, penser aux deux fichiers.
 
+## Packs de narration enregistrés
+
+L'expérience par défaut : une légende fixe, entièrement pré-enregistrée. Voir
+`docs/pack-lanternes-mangrove.md` pour le texte approuvé et
+`src/audio/packs/` pour les données.
+
+Un pack se compose de deux familles, parce qu'on les retrouve de deux façons :
+
+- **PROSE** — le texte de la légende, extrait du preset. Le serveur envoie déjà ces
+  chaînes dans `phase.text` : le navigateur **apparie sur le texte lui-même**, donc
+  aucune clé ne peut diverger de ce qui est réellement dit.
+- **CUES** — écrites pour le pack ; le serveur ne les envoie jamais, elles se
+  branchent sur des événements (aube sans mort, rôle révélé, sentence).
+
+Deux règles absolues :
+
+1. **Le narrateur ne prononce jamais de nom de joueur.** Les lignes de mort du preset
+   portent `{victim}`, qu'aucun enregistrement ne peut interpoler. La voix dit *ce
+   qui s'est passé*, l'écran dit *à qui*. `check:assets` refuse le build si un
+   placeholder apparaît dans un pack.
+2. **Un pack n'est joué que sur son `storyId`.** Une légende écrite par l'IA n'en a
+   pas et n'obtient donc aucun pack : lire de la prose enregistrée par-dessus une
+   autre histoire serait pire que de ne rien lire.
+
+La direction de jeu (`[solemn]`, `[whispers]`, `[dramatically]`) est appliquée **à la
+génération** selon le rôle de la ligne, pas écrite dans le texte : le libellé approuvé
+reste exactement celui qui a été relu, et rediriger tout le pack est une seule
+modification au lieu de 41.
+
 ## Voix off : statique vs dynamique
 
 C'est la scission structurante de tout le système.

@@ -16,6 +16,7 @@
 import { access } from "node:fs/promises";
 import { MUSIC, SFX, VOICE } from "../src/audio/manifest.ts";
 import { ROLES } from "../src/core/roles.ts";
+import { ALL as PACK_LINES, PACK_ID } from "../src/audio/packs/lanternes-mangrove.ts";
 
 const AUDIO = new URL("../public/assets/audio/", import.meta.url).pathname;
 const IMAGES = new URL("../public/assets/images/", import.meta.url).pathname;
@@ -62,6 +63,15 @@ async function main() {
   }
   for (const stem of BRAND_IMAGES) {
     if (!(await exists(`${IMAGES}${stem}.png`))) errors.push(`marque "${stem}.png" absente`);
+  }
+
+  // ── recorded narration packs ──
+  // A pack line is played by file name off a text match, so a missing file is silent
+  // narration at a dramatic beat. And a recording cannot interpolate, so a stray
+  // placeholder means a line that would be spoken literally as "{victim}".
+  for (const line of PACK_LINES) {
+    if (!(await exists(AUDIO + line.file))) errors.push(`pack "${PACK_ID}" — ${line.file} absent (${line.label})`);
+    if (/\{[a-zA-Z_]+\}/.test(line.text)) errors.push(`pack "${PACK_ID}" — ${line.label} contient un placeholder, impossible à enregistrer`);
   }
 
   for (const w of warnings) console.warn(`⚠️  ${w}`);

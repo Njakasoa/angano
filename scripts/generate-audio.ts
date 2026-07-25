@@ -14,6 +14,7 @@
  */
 import { mkdir, writeFile, access, unlink } from "node:fs/promises";
 import { AMBIANCE, SFX, VOICE } from "./audio-plan.ts";
+import { ALL as PACK_LINES, PACK_ID } from "../src/audio/packs/lanternes-mangrove.ts";
 
 const KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_NARRATOR ?? "qCDtdqQv5bdcrgWED5k8"; // Arthur Martin (fr)
@@ -47,7 +48,7 @@ const SETTINGS = voiceSettings();
 
 const args = new Set(process.argv.slice(2));
 const force = args.has("--force");
-const picked = ["--sfx", "--voice", "--ambiance"].filter((f) => args.has(f));
+const picked = ["--sfx", "--voice", "--ambiance", "--pack"].filter((f) => args.has(f));
 const want = picked.length ? new Set(picked) : new Set(["--sfx", "--voice"]);
 
 /**
@@ -134,6 +135,20 @@ async function seamlessLoop(bytes: Uint8Array): Promise<Uint8Array> {
   }
 }
 
+/**
+ * Performance direction for a pack line, as an eleven_v3 audio tag.
+ *
+ * Applied at generation time from the line's role rather than baked into the text:
+ * the approved wording in the pack stays exactly what was reviewed, and re-directing
+ * the whole pack is one edit here instead of 41.
+ */
+function direction(label: string): string {
+  if (/^nuit_|^ambiance_night$/.test(label)) return "[whispers] ";
+  if (/^(vote_|jour_vote_|ambiance_vote$|razana_|victoire_)/.test(label)) return "[dramatically] ";
+  if (/^(jour_debate_|ambiance_debate$)/.test(label)) return "";
+  return "[solemn] ";   // intro, dawn, deaths, reveals
+}
+
 async function produce(label: string, file: string, make: () => Promise<Uint8Array | null>) {
   const path = OUT + file;
   if (!force && (await exists(path))) { console.log(`  ⏭  ${file} (déjà présent)`); return "skipped" as const; }
@@ -178,6 +193,21 @@ async function main() {
         const raw = await post(`${BASE}/v1/music`, { prompt: a.prompt, music_length_ms: a.seconds * 1000 });
         return raw ? await seamlessLoop(raw) : null;
       }));
+    }
+  }
+
+  if (want.has("--pack")) {
+    const packVoice = process.env.ELEVENLABS_PACK_VOICE ?? VOICE_ID;
+    const packModel = process.env.ELEVENLABS_PACK_MODEL ?? "eleven_v3";
+    console.log(`\n📖 Pack « ${PACK_ID} » (${PACK_LINES.length} lignes) — ${packModel} · voix ${packVoice}`);
+    for (const line of PACK_LINES) {
+      if (/\{[a-zA-Z_]+\}/.test(line.text)) {   // a recording cannot interpolate
+        console.error(`  ✗ ${line.label} contient un placeholder — pack refusé`);
+        process.exit(1);
+      }
+      count(await produce(line.label, line.file, () =>
+        post(`${BASE}/v1/text-to-speech/${packVoice}?output_format=mp3_44100_128`,
+          { text: direction(line.label) + speakable(line.text), model_id: packModel })));
     }
   }
 

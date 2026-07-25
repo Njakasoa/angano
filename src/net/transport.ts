@@ -1,4 +1,4 @@
-import type { AnganoClientMsg, AnganoServerMsg, GameConfig, MissionStatus } from "../core/protocol.ts";
+import type { AnganoClientMsg, AnganoServerMsg, GameConfig, MissionStatus, Phase } from "../core/protocol.ts";
 
 /** Typed wrapper over the Angano websocket. No game logic — the server owns it. */
 export class AnganoClient {
@@ -24,7 +24,9 @@ export class AnganoClient {
   vote(targetId: string | null) { this.send({ k: "vote", targetId }); }
   missionStatus(playerId: string, status: MissionStatus) { this.send({ k: "missionStatus", playerId, status }); }
   missionReviewRequest() { this.send({ k: "missionReviewRequest" }); }
-  nextPhase() { this.send({ k: "nextPhase" }); }
+  /** `from` is the phase the narrator was looking at — the server drops the tap if
+   *  a timer already moved past it, instead of eating the next phase's advance. */
+  nextPhase(from?: Phase) { this.send({ k: "nextPhase", from }); }
   prevPhase() { this.send({ k: "prevPhase" }); }
   rematch() { this.send({ k: "rematch" }); }
   close() { try { this.ws.close(); } catch { /* */ } }

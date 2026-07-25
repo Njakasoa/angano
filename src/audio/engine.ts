@@ -22,6 +22,7 @@ export type Bus = "music" | "sfx" | "voice";
 
 const DUCK_GAIN = 0.25; // music level while a voice line plays
 const FADE_MS = 600;
+const GAP_MS = 220;        // breath between two narrated lines
 const LOAD_TIMEOUT_MS = 8_000;
 const STORE_KEY = "angano_audio";
 
@@ -44,6 +45,7 @@ export class AudioEngine {
   private unlocked = false;
   private silenced = false;   // same-room: this device is not the speaker
   private gestureBound = false;
+  private sequenceToken = 0; // increments so a newer narration abandons the older queue
 
   /** Fires when playback becomes possible (or is found to be blocked). */
   onUnlockedChange?: (unlocked: boolean) => void;
@@ -157,7 +159,29 @@ export class AudioEngine {
     return await duration(el);
   }
 
+  /**
+   * Speak several lines back to back — a dawn is "one place is empty" *then* what was
+   * under the lamba, and `speak` alone would cut the first off with the second.
+   *
+   * Resolves with the total length. A newer sequence wins: the token check stops an
+   * abandoned one from waking up mid-way and talking over the game.
+   */
+  async speakSequence(sources: string[]): Promise<number> {
+    const token = ++this.sequenceToken;
+    let total = 0;
+    for (const source of sources) {
+      if (token !== this.sequenceToken || this.silenced) break;
+      const ms = await this.speak(source);
+      if (token !== this.sequenceToken) break;
+      if (!ms) continue;
+      total += ms + GAP_MS;
+      await sleep(ms + GAP_MS);
+    }
+    return total;
+  }
+
   stopVoice() {
+    this.sequenceToken++; // orphan any queue still waiting on a gap
     const el = this.voice;
     this.voice = undefined;
     if (el) stop(el);
@@ -304,6 +328,7 @@ function stop(el: HTMLAudioElement) {
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function loadPrefs(): Prefs {
   try {

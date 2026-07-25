@@ -13,7 +13,20 @@ export interface PlayerPublic { id: string; name: string; alive: boolean; isNarr
 export interface NarratorPlayer extends PlayerPublic { roleId?: string }
 export interface RoleInfo { roleId: string; team: Team; nameMg: string; desc: string }
 export type Pace = "rapide" | "normal" | "lent";
-export interface GameConfig { songomby: number; roles: string[]; pace?: Pace; manualDeaths?: boolean; theme?: boolean }
+/**
+ * `sameRoom` — everyone around one table: only the narrator's device makes sound,
+ * and the narrator drives the phases by hand unless `autoAdvance` says otherwise
+ * (which defaults to `!sameRoom`).
+ */
+export interface GameConfig {
+  songomby: number;
+  roles: string[];
+  pace?: Pace;
+  manualDeaths?: boolean;
+  theme?: boolean;
+  sameRoom?: boolean;
+  autoAdvance?: boolean;
+}
 export interface StoryAmbiance { night: string; dawn: string; debate: string; vote: string }
 export interface StoryComposition { songomby: number; roles: string[]; pace: Pace }
 export type MissionStatus = "pending" | "requested" | "validated" | "failed";
@@ -70,6 +83,7 @@ export type AnganoClientMsg =
   | { k: "missionStatus"; playerId: string; status: MissionStatus }
   | { k: "missionReviewRequest" }
   | { k: "nextPhase" }
+  | { k: "prevPhase" }
   | { k: "rematch" };
 
 export type AnganoServerMsg =
@@ -77,8 +91,8 @@ export type AnganoServerMsg =
   | { k: "role"; role: RoleInfo }
   | { k: "playerStory"; story: PlayerMissionSheet }
   | { k: "story"; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string>; composition?: StoryComposition; narratorScript?: string[]; introVoiceUrl?: string }
-  | { k: "narrator"; players: NarratorPlayer[]; log: string[]; missionSheets?: NarratorMissionSheet[] }
-  | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string; voiceUrl?: string }
+  | { k: "narrator"; players: NarratorPlayer[]; log: string[]; missionSheets?: NarratorMissionSheet[]; canRewind?: boolean }
+  | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string; voiceUrl?: string; manualPacing?: boolean }
   | { k: "prompt"; kind: string; targets: PlayerPublic[]; options?: string[]; deadline: number }
   | { k: "seerResult"; targetId: string; roleId: string; nameMg: string; team?: Team }
   | { k: "trackResult"; targetId: string; visited: boolean; destinationId?: string | null }

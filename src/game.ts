@@ -33,6 +33,9 @@ export class Game {
   private journal: string[] = [];
   private story: Extract<AnganoServerMsg, { k: "story" }> | null = null;
   private storyIntroShown = false;
+  private sameRoom = false;
+  private canRewind = false;
+  private manualPacing = false;
   private leaving = false;
   private currentName = ""; private currentRoom = ""; private reconnectTries = 0;
 
@@ -45,6 +48,12 @@ export class Game {
     void this.amb.warm();
     const active = readActive(); // page was reloaded mid-game → rejoin automatically
     if (active) this.startConnect(active.name, active.room); else this.menu();
+  }
+
+  /** Same room: only the narrator's device is the speaker (see AudioEngine). */
+  private applyAudioRouting() {
+    this.amb.setSilenced(this.sameRoom && !this.amNarrator);
+    this.syncSound();
   }
 
   private syncSound() {
@@ -87,6 +96,8 @@ export class Game {
 
       client.on("lobby", (m) => {
         this.selfId = m.selfId; this.hostId = m.hostId; this.narratorId = m.narratorId; this.players = m.players;
+        this.sameRoom = !!m.config.sameRoom;
+        this.applyAudioRouting();
         this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; this.seenRequestIds.clear(); // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
         this.phase = "lobby";
@@ -115,6 +126,7 @@ export class Game {
       client.on("story", (m) => { this.story = m; this.render(); });
       client.on("narrator", (m) => {
         this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? [];
+        this.canRewind = !!m.canRewind;
         for (const s of this.missionSheets) {
           if (s.status === "requested") {
             if (!this.seenRequestIds.has(s.playerId)) { this.seenRequestIds.add(s.playerId); void this.amb.sfx("mission_request"); this.ui.toast(`${s.playerName} demande la validation de sa mission.`); }
@@ -129,6 +141,7 @@ export class Game {
         this.phase = m.phase; this.prompt = null; this.exileMode = false;
         if (m.phase !== "vote") this.voteTally = {};
         if (m.phase !== "aube") this.deadReveal = {};
+        this.manualPacing = !!m.manualPacing;
         void this.amb.playMusic(m.audioKey); this.syncSound();
         // headline flourish on day phases + once when the night falls (not on every night sub-step)
         const headline = m.phase === "debat" || m.phase === "vote" || (isNight(m.phase) && !isNight(prev));
@@ -236,8 +249,20 @@ export class Game {
 
     if (this.amNarrator) {
       const advLabel = this.phase === "aube" ? "🗣 Révéler / Continuer ▶" : this.phase === "debat" ? "Lancer le vote ▶" : "Continuer ▶";
+      const pacing = h("div", { class: "nar-pacing" },
+        h("button", {
+          class: "btn ghost small",
+          disabled: this.canRewind ? false : "",
+          title: this.canRewind
+            ? "Revenir à la phase précédente (fausse manip)"
+            : "Impossible ici : la phase précédente a déjà révélé son résultat",
+          onclick: () => this.client?.prevPhase(),
+        }, "◀ Revenir"),
+        this.manualPacing ? h("span", { class: "nar-pacing-hint" }, "Tu donnes le rythme") : "",
+      );
       this.ui.setPanel(
         h("div", { class: "nar-title" }, "🎙️ Vue du narrateur"),
+        pacing,
         ...this.storyPanel(h, true),
         ...this.narratorMissionPanel(h),
         h("div", { class: "nar-log" }, ...this.log.slice(-8).map((l) => h("div", {}, l))),

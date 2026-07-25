@@ -42,6 +42,7 @@ export class AudioEngine {
   private voice?: HTMLAudioElement;
   private ducked = false;
   private unlocked = false;
+  private silenced = false;   // same-room: this device is not the speaker
   private gestureBound = false;
 
   /** Fires when playback becomes possible (or is found to be blocked). */
@@ -52,6 +53,19 @@ export class AudioEngine {
   }
 
   // ── preferences ───────────────────────────────────────
+  /**
+   * Same-room games play from the narrator's phone alone. Eight devices running the
+   * same ambiance a second apart is worse than none, so every other device goes
+   * silent — separately from the player's own mute, which must survive the game.
+   */
+  setSilenced(silenced: boolean) {
+    if (this.silenced === silenced) return;
+    this.silenced = silenced;
+    this.applyGain();
+    if (silenced) this.stopVoice(); else void this.tryUnlock();
+  }
+  get isSilenced() { return this.silenced; }
+
   get isMuted() { return this.prefs.muted; }
   get isUnlocked() { return this.unlocked; }
   volume(bus: Bus) { return this.prefs[bus]; }
@@ -101,6 +115,7 @@ export class AudioEngine {
   // ── one-shots ─────────────────────────────────────────
   /** Fire an effect. Unknown or unproduced keys are silently ignored. */
   async sfx(key: SfxKey) {
+    if (this.prefs.muted || this.silenced) return;
     const src = await this.resolve(SFX[key]);
     if (!src) return;
     const el = new Audio(src);
@@ -117,6 +132,7 @@ export class AudioEngine {
    * can keep a visual beat on screen for exactly as long as the line lasts.
    */
   async speak(source: string): Promise<number> {
+    if (this.silenced) return 0;
     const src = source.startsWith("/") || source.startsWith("http")
       ? source
       : await this.resolve(VOICE[source] ?? [`${source}.mp3`]);
@@ -162,7 +178,7 @@ export class AudioEngine {
 
   // ── internals ─────────────────────────────────────────
   private gain(bus: Bus): number {
-    if (this.prefs.muted) return 0;
+    if (this.prefs.muted || this.silenced) return 0;
     const duck = bus === "music" && this.ducked ? DUCK_GAIN : 1;
     return this.prefs[bus] * duck;
   }

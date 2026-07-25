@@ -29,10 +29,12 @@ async function mk() {
   const c = await browser.newContext({ viewport: { width: 402, height: 840 } });
   ctxs.push(c);
   const page = await c.newPage();
+  page.assets = [];   // per-page, so a scenario can ask what THIS device fetched
   page.on("response", (r) => {
     const url = r.url();
     if (!url.includes("/assets/")) return;
     const file = url.split("/").pop();
+    page.assets.push(file);
     // A status check alone is worthless here: the dev server answers an unknown
     // path with the SPA fallback — 200 text/html. A missing asset is therefore an
     // HTML body where an image or an mp3 was expected.
@@ -43,7 +45,7 @@ async function mk() {
   return page;
 }
 
-async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide", theme = true }) {
+async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide", theme = true, sameRoom = false }) {
   const host = await mk();
   await host.goto(URL, { waitUntil: "domcontentloaded" }); await host.waitForSelector(".brand");
   await host.fill('input[placeholder="Ton pseudo"]', "Narr");
@@ -57,6 +59,7 @@ async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace
   for (let k = 1; k < songomby; k++) await host.locator(".stepper .btn.step", { hasText: "+" }).click().catch(() => {});
   await host.selectOption("select.field.mini2", pace).catch(() => {});
   if (manualDeaths) await host.getByRole("button", { name: /Morts annoncées/ }).click();
+  if (sameRoom) await host.getByRole("button", { name: /Même pièce/ }).click();
   if (theme) {
     const storyBtn = host.getByRole("button", { name: /Histoire IA/ });
     if ((await storyBtn.getAttribute("data-on").catch(() => "0")) !== "1") await storyBtn.click();
@@ -321,9 +324,48 @@ async function scAssets() {
   await teardown();
 }
 
+/**
+ * Same-room mode: one table, one speaker. The narrator drives the beats by hand and
+ * every other device stays silent — eight phones running the ambiance a second apart
+ * is worse than none.
+ */
+async function scSameRoom() {
+  const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"], sameRoom: true });
+
+  const rewind = g.host.getByRole("button", { name: /Revenir/ });
+  ok("Narrateur : bouton « Revenir » présent", (await rewind.count()) > 0);
+  ok("Narrateur : mention « Tu donnes le rythme »", (await g.host.locator(".nar-pacing-hint").count()) > 0);
+  ok("Revenir désactivé sur la 1re étape", await rewind.first().isDisabled());
+
+  const before = await txt(g.host.locator(".phase-title"));
+  await g.host.locator(".panel .btn.big").first().click();
+  await sleep(700);
+  const after = await txt(g.host.locator(".phase-title"));
+  ok("Continuer fait avancer d'une phase", after !== before, `${before} → ${after}`);
+
+  ok("Revenir devient actif", !(await rewind.first().isDisabled()));
+  await rewind.first().click();
+  await sleep(700);
+  const back = await txt(g.host.locator(".phase-title"));
+  ok("Revenir ramène à la phase précédente", back === before, `attendu "${before}", obtenu "${back}"`);
+
+  const spokenOnPlayer = g.players.flatMap((p) => p.assets).filter((f) => f.startsWith("vo_"));
+  ok("Aucune voix off sur les appareils des joueurs", spokenOnPlayer.length === 0, spokenOnPlayer.join(", "));
+  await teardown();
+}
+
+/** Remote mode is the control: the same role reveal DOES speak on a player's device. */
+async function scRemoteAudio() {
+  const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"], sameRoom: false });
+  await sleep(1800);
+  const spokenOnPlayer = g.players.flatMap((p) => p.assets).filter((f) => f.startsWith("vo_"));
+  ok("À distance, la voix off joue bien chez les joueurs", spokenOnPlayer.length > 0, `${spokenOnPlayer.length} clips`);
+  await teardown();
+}
+
 async function main() {
   browser = await chromium.launch();
-  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets]];
+  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets], ["sameRoom", scSameRoom], ["remoteAudio", scRemoteAudio]];
   const filter = process.env.SCENARIO;
   const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
   if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);

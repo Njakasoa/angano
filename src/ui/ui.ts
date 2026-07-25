@@ -32,6 +32,8 @@ export class UI {
   private bannerImg?: El; private bannerTitle?: El; private bannerText?: El; private dayEl?: El;
   private villageEl?: El; private panelEl?: El; private muteBtn?: HTMLButtonElement; private timerBar?: El;
   private phaseIntroEl?: El; private phaseIntroTimer?: number;
+  private phaseIntroClose?: () => void; private phaseIntroEndsAt = 0;
+  private soundBlocked = false;
   onToggleMute?: () => void;
 
   constructor(private root: El) {}
@@ -42,6 +44,8 @@ export class UI {
     if (this.phaseIntroTimer) { clearTimeout(this.phaseIntroTimer); this.phaseIntroTimer = undefined; }
     this.phaseIntroEl?.remove();
     this.phaseIntroEl = undefined;
+    this.phaseIntroClose = undefined;
+    this.phaseIntroEndsAt = 0;
   }
 
   // ── menu ──
@@ -81,8 +85,16 @@ export class UI {
   }
   showCodex(onBack: () => void) {
     const tiles = Object.values(ROLES).map((r) => h("div", { class: "codex-tile " + teamClass(r.team) },
-      h("div", { class: "ct-img", style: `background-image:url(${imageUrl(r.asset)})` }),
-      h("div", { class: "ct-body" }, h("div", { class: "ct-name" }, r.nameMg), h("div", { class: "ct-desc" }, r.desc))));
+      h("div", { class: "ct-head" },
+        h("div", { class: "ct-img", style: `background-image:url(${imageUrl(r.asset)})` }),
+        h("div", { class: "ct-body" }, h("div", { class: "ct-name" }, r.nameMg), h("div", { class: "ct-desc" }, r.desc))),
+      // Several powers are passives or day actions with no phase banner — this is
+      // the only place their art is ever shown.
+      r.powers?.length
+        ? h("div", { class: "ct-powers" }, ...r.powers.map((p) => h("figure", { class: "ct-power" },
+            h("div", { class: "ct-power-img", style: `background-image:url(${imageUrl(p.art)})` }),
+            h("figcaption", {}, p.label))))
+        : ""));
     this.mount(h("div", { class: "screen center" },
         h("div", { class: "card wide scroll" },
         h("div", { class: "brand small" }, "LES RÔLES"),
@@ -219,8 +231,32 @@ export class UI {
     };
     el.addEventListener("click", close);
     this.phaseIntroEl = el;
+    this.phaseIntroClose = close;
     this.root.append(el);
-    this.phaseIntroTimer = window.setTimeout(close, phaseIntroDurationMs(title, text, opts.phaseMs));
+    const ms = phaseIntroDurationMs(title, text, opts.phaseMs);
+    this.phaseIntroEndsAt = Date.now() + ms;
+    this.phaseIntroTimer = window.setTimeout(close, ms);
+  }
+
+  /**
+   * Keep the current flourish up for at least `ms` — used to hold the art while a
+   * narration line finishes, instead of dissolving mid-sentence.
+   */
+  extendPhaseIntro(ms: number) {
+    const el = this.phaseIntroEl;
+    if (!el || !this.phaseIntroClose) return;
+    const remaining = this.phaseIntroEndsAt - Date.now();
+    if (ms <= remaining) return;
+    if (this.phaseIntroTimer) clearTimeout(this.phaseIntroTimer);
+    this.phaseIntroEndsAt = Date.now() + ms;
+    this.phaseIntroTimer = window.setTimeout(this.phaseIntroClose, ms);
+  }
+
+  /** Show that the browser is withholding sound until the player interacts. */
+  setSoundBlocked(blocked: boolean) {
+    this.soundBlocked = blocked;
+    if (this.muteBtn) this.muteBtn.classList.toggle("blocked", blocked);
+    if (this.muteBtn) this.muteBtn.title = blocked ? "Touche l'écran pour activer le son" : "Couper / rétablir le son";
   }
 
   setBanner(imageKey: string, title: string, text: string, day: number) {
@@ -229,7 +265,7 @@ export class UI {
     if (this.bannerText) this.bannerText.textContent = text;
     if (this.dayEl) this.dayEl.textContent = day > 0 ? `Jour ${day}` : "";
   }
-  setMuted(m: boolean) { if (this.muteBtn) this.muteBtn.textContent = m ? "🔇" : "🔊"; }
+  setMuted(m: boolean) { if (this.muteBtn) this.muteBtn.textContent = m ? "🔇" : this.soundBlocked ? "🔈" : "🔊"; }
 
   setVillage(players: PlayerPublic[], selfId: string, narratorId: string | null, opts: VillageOpts = {}) {
     const v = this.villageEl; if (!v) return;

@@ -76,18 +76,18 @@ export type AnganoServerMsg =
   | { k: "lobby"; code: string; hostId: string; narratorId: string | null; selfId: string; config: GameConfig; players: PlayerPublic[] }
   | { k: "role"; role: RoleInfo }
   | { k: "playerStory"; story: PlayerMissionSheet }
-  | { k: "story"; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string>; composition?: StoryComposition; narratorScript?: string[] }
+  | { k: "story"; title: string; villageName: string; intro: string; ambiance: StoryAmbiance; roleEpithets: Record<string, string>; composition?: StoryComposition; narratorScript?: string[]; introVoiceUrl?: string }
   | { k: "narrator"; players: NarratorPlayer[]; log: string[]; missionSheets?: NarratorMissionSheet[] }
-  | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string }
+  | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string; voiceUrl?: string }
   | { k: "prompt"; kind: string; targets: PlayerPublic[]; options?: string[]; deadline: number }
   | { k: "seerResult"; targetId: string; roleId: string; nameMg: string; team?: Team }
   | { k: "trackResult"; targetId: string; visited: boolean; destinationId?: string | null }
   | { k: "fadyTrace"; targetId: string }
   | { k: "blocked" }
   | { k: "wolves"; wolfIds: string[]; victimId: string | null }
-  | { k: "deaths"; ids: string[]; reveals: { id: string; roleId: string; nameMg: string }[]; text: string }
+  | { k: "deaths"; ids: string[]; reveals: { id: string; roleId: string; nameMg: string }[]; text: string; voiceUrl?: string; artKey?: string }
   | { k: "voteState"; tally: { id: string; votes: number }[] }
   | { k: "voteResult"; eliminatedId: string | null; roleId?: string; nameMg?: string }
   | { k: "state"; phase: Phase; day: number; players: PlayerPublic[] }
-  | { k: "finish"; winner: Team; text: string; reveal: { id: string; name: string; roleId: string; nameMg: string }[]; missions?: NarratorMissionSheet[]; personalWinners?: PersonalWinner[] }
+  | { k: "finish"; winner: Team; text: string; reveal: { id: string; name: string; roleId: string; nameMg: string }[]; missions?: NarratorMissionSheet[]; personalWinners?: PersonalWinner[]; voiceUrl?: string }
   | { k: "error"; message: string };

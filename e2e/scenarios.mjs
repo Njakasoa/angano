@@ -16,7 +16,32 @@ const debug = (...args) => { if (process.env.DEBUG_E2E) console.log("[debug]", .
 
 let browser;
 const ctxs = [];
-async function mk() { const c = await browser.newContext({ viewport: { width: 402, height: 840 } }); ctxs.push(c); return c.newPage(); }
+/**
+ * Asset requests seen across every page of the run. Art is addressed by a key the
+ * server sends, so a bad stem shows up only as a blank banner in production — here
+ * it shows up as a 404. Audio is different on purpose: a music key probes its
+ * fallback chain, so a miss on an unproduced track is expected and only the final
+ * resolution matters.
+ */
+const assetMisses = [];
+const assetHits = [];
+async function mk() {
+  const c = await browser.newContext({ viewport: { width: 402, height: 840 } });
+  ctxs.push(c);
+  const page = await c.newPage();
+  page.on("response", (r) => {
+    const url = r.url();
+    if (!url.includes("/assets/")) return;
+    const file = url.split("/").pop();
+    // A status check alone is worthless here: the dev server answers an unknown
+    // path with the SPA fallback — 200 text/html. A missing asset is therefore an
+    // HTML body where an image or an mp3 was expected.
+    const type = r.headers()["content-type"] || "";
+    const missing = r.status() >= 400 || type.startsWith("text/html");
+    (missing ? assetMisses : assetHits).push(file);
+  });
+  return page;
+}
 
 async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide", theme = true }) {
   const host = await mk();
@@ -251,9 +276,54 @@ async function scMissionReview() {
   await teardown();
 }
 
+/**
+ * Assets: the codex power gallery is the only place several illustrations appear,
+ * and a mistyped art stem is invisible in the UI — it just renders nothing.
+ */
+async function scAssets() {
+  const page = await mk();
+  await page.goto(URL, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brand");
+
+  await page.getByRole("button", { name: "Les rôles" }).click();
+  await page.waitForSelector(".codex-tile");
+  const tiles = await page.locator(".codex-tile").count();
+  ok("Codex : une tuile par rôle", tiles === 9, `tuiles=${tiles}`);
+
+  // 8 roles carry 12 power banners between them (Mponina has no power).
+  const powers = await page.locator(".ct-power-img").count();
+  ok("Codex : galerie des pouvoirs rendue", powers === 12, `vignettes=${powers}`);
+
+  const styles = await page.locator(".ct-power-img").first().getAttribute("style");
+  ok("Codex : les vignettes pointent vers du WebP", /\.webp\)/.test(styles || ""), styles || "");
+
+  // Play a real game so every phase banner and role portrait gets requested.
+  await teardown();
+  const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"] });
+  const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
+  ok("Partie complète jouée pour charger tous les visuels", !!r.winner, `winner=${r.winner}`);
+
+  // Role portraits and scene banners must all resolve — a 404 there is a dead key.
+  // Power art is excluded: five illustrations are still to be produced (tracked by
+  // `bun run check:assets`, which lists them as warnings), and the codex renders
+  // their tiles regardless.
+  const imageMisses = [...new Set(assetMisses.filter((f) => /\.(webp|png)$/.test(f) && !f.startsWith("power_")))];
+  ok("Aucun portrait ni décor manquant sur une partie complète", imageMisses.length === 0, imageMisses.join(", "));
+
+  // Sanity-check the detector itself: the five unproduced power banners MUST be
+  // seen as missing, otherwise the assertion above proves nothing.
+  const powerMisses = [...new Set(assetMisses.filter((f) => f.startsWith("power_")))];
+  ok("Le détecteur repère bien les visuels absents", powerMisses.length > 0, `${powerMisses.length} pouvoirs à produire`);
+
+  // Every phase must end up with *something* to play, via the fallback chain.
+  const audioHits = new Set(assetHits.filter((f) => f.endsWith(".mp3")));
+  ok("Ambiances résolues par la chaîne de repli", audioHits.size >= 5, `${audioHits.size} pistes distinctes chargées`);
+  await teardown();
+}
+
 async function main() {
   browser = await chromium.launch();
-  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths]];
+  const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets]];
   const filter = process.env.SCENARIO;
   const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
   if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);

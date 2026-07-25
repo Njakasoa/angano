@@ -1,8 +1,8 @@
 import { UI } from "./ui/ui.ts";
-import { Ambiance } from "./audio/ambiance.ts";
-import { connectAngano } from "./net/online.ts";
+import { AudioEngine } from "./audio/engine.ts";
+import { connectAngano, apiMediaUrl } from "./net/online.ts";
 import { AnganoClient } from "./net/transport.ts";
-import { roleDef } from "./core/roles.ts";
+import { roleDef, imageUrl } from "./core/roles.ts";
 import type {
   PlayerPublic, NarratorPlayer, RoleInfo, GameConfig, Phase, AnganoServerMsg,
   PlayerMissionSheet, NarratorMissionSheet, MissionStatus, PersonalWinner,
@@ -10,7 +10,7 @@ import type {
 
 export class Game {
   private ui = new UI(document.getElementById("app")!);
-  private amb = new Ambiance();
+  private amb = new AudioEngine();
   private client?: AnganoClient;
   private lobby?: ReturnType<UI["showLobby"]>;
 
@@ -37,14 +37,24 @@ export class Game {
   private currentName = ""; private currentRoom = ""; private reconnectTries = 0;
 
   start() {
-    this.ui.onToggleMute = () => { this.amb.setMuted(!this.amb.isMuted); this.ui.setMuted(this.amb.isMuted); };
+    this.ui.onToggleMute = () => { this.amb.setMuted(!this.amb.isMuted); this.syncSound(); };
+    // Autoplay is refused until a gesture, and the auto-rejoin path below has none.
+    // Surface that instead of hiding it, so the player can switch sound on.
+    this.amb.onUnlockedChange = () => this.syncSound();
+    this.ui.setMuted(this.amb.isMuted);
+    void this.amb.warm();
     const active = readActive(); // page was reloaded mid-game → rejoin automatically
     if (active) this.startConnect(active.name, active.room); else this.menu();
+  }
+
+  private syncSound() {
+    this.ui.setMuted(this.amb.isMuted);
+    this.ui.setSoundBlocked(!this.amb.isMuted && !this.amb.isUnlocked);
   }
   private get amNarrator() { return this.narratorId === this.selfId; }
 
   private menu() {
-    this.leaving = true; this.client?.close(); this.client = undefined; this.amb.stop();
+    this.leaving = true; this.client?.close(); this.client = undefined; this.amb.stopMusic(); this.amb.stopVoice();
     try { sessionStorage.removeItem("angano_active"); } catch { /* */ }
     this.ui.leaveStage(); this.phase = "lobby"; this.role = null;
     this.ui.showMenu((name, room) => this.startConnect(name, room ?? randomCode()));
@@ -92,14 +102,22 @@ export class Game {
         this.lobby.render(m);
       });
 
-      client.on("role", (m) => { this.role = m.role; this.roleReveal = true; this.render(); });
-      client.on("playerStory", (m) => { this.playerStory = m.story; this.render(); });
+      client.on("role", (m) => {
+        this.role = m.role; this.roleReveal = true; this.render();
+        void this.amb.sfx("role_reveal");
+        void this.amb.speak(`vo_role_${m.role.roleId}`); // static line — no runtime synthesis
+      });
+      client.on("playerStory", (m) => {
+        const wasValidated = this.playerStory?.status === "validated";
+        this.playerStory = m.story; this.render();
+        if (!wasValidated && m.story.status === "validated") void this.amb.sfx("mission_validated");
+      });
       client.on("story", (m) => { this.story = m; this.render(); });
       client.on("narrator", (m) => {
         this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? [];
         for (const s of this.missionSheets) {
           if (s.status === "requested") {
-            if (!this.seenRequestIds.has(s.playerId)) { this.seenRequestIds.add(s.playerId); this.ui.toast(`${s.playerName} demande la validation de sa mission.`); }
+            if (!this.seenRequestIds.has(s.playerId)) { this.seenRequestIds.add(s.playerId); void this.amb.sfx("mission_request"); this.ui.toast(`${s.playerName} demande la validation de sa mission.`); }
           } else this.seenRequestIds.delete(s.playerId);
         }
         this.render();
@@ -111,28 +129,38 @@ export class Game {
         this.phase = m.phase; this.prompt = null; this.exileMode = false;
         if (m.phase !== "vote") this.voteTally = {};
         if (m.phase !== "aube") this.deadReveal = {};
-        this.amb.play(m.audioKey); this.ui.setMuted(this.amb.isMuted);
+        void this.amb.playMusic(m.audioKey); this.syncSound();
         // headline flourish on day phases + once when the night falls (not on every night sub-step)
         const headline = m.phase === "debat" || m.phase === "vote" || (isNight(m.phase) && !isNight(prev));
         const firstNight = isNight(m.phase) && !isNight(prev) && m.day === 1;
+        if (isNight(m.phase) && !isNight(prev)) void this.amb.sfx("night_fall");
         if (this.story && firstNight && !this.storyIntroShown) {
           this.storyIntroShown = true;
           this.ui.phaseIntro(m.imageKey, this.story.title, this.story.intro, { phaseMs: m.durationMs });
+          this.narrate(this.story.introVoiceUrl);
         } else if (headline && prev !== m.phase) {
           this.ui.phaseIntro(m.imageKey, m.title, m.text, { phaseMs: m.durationMs });
+          this.narrate(m.voiceUrl);
+        } else {
+          this.narrate(m.voiceUrl);
         }
         this.ui.setBanner(m.imageKey, m.title, m.text, m.day);
         this.ui.setTimer(m.durationMs);
         this.render();
       });
 
-      client.on("prompt", (m) => { this.prompt = { kind: m.kind, targets: m.targets.map((t) => t.id) }; this.render(); });
+      client.on("prompt", (m) => {
+        this.prompt = { kind: m.kind, targets: m.targets.map((t) => t.id) }; this.render();
+        if (!this.amNarrator) void this.amb.sfx("your_turn");
+      });
       client.on("seerResult", (m) => {
+        void this.amb.sfx("discovery");
         const team = m.team ? ` · ${teamLabel(m.team)}` : "";
         this.ui.toast(`La table indique : ${this.nameOf(m.targetId)} porte le signe ${m.nameMg}${team}.`);
         this.note(`🔮 ${this.nameOf(m.targetId)} → ${m.nameMg}${team}`);
       });
       client.on("trackResult", (m) => {
+        void this.amb.sfx("discovery");
         const target = this.nameOf(m.targetId);
         const destination = m.destinationId ? this.nameOf(m.destinationId) : "";
         const moved = destination
@@ -141,23 +169,32 @@ export class Game {
         this.ui.toast(moved);
         this.note(destination ? `👣 ${target} → ${destination}` : `👣 ${target} ${m.visited ? "a quitté sa place" : "est resté immobile"}`);
       });
-      client.on("fadyTrace", (m) => { this.ui.toast(`Le Fady des eaux sur ${this.nameOf(m.targetId)} a été troublé — une présence hostile est venue.`); this.note(`💧 fady troublé sur ${this.nameOf(m.targetId)} (présence hostile)`); });
-      client.on("blocked", () => { this.ui.toast("Une malédiction a brouillé ton pouvoir cette nuit."); this.note("🚫 ton pouvoir a été bloqué cette nuit"); });
+      client.on("fadyTrace", (m) => { void this.amb.sfx("discovery"); this.ui.toast(`Le Fady des eaux sur ${this.nameOf(m.targetId)} a été troublé — une présence hostile est venue.`); this.note(`💧 fady troublé sur ${this.nameOf(m.targetId)} (présence hostile)`); });
+      client.on("blocked", () => { void this.amb.sfx("blocked"); this.ui.toast("Une malédiction a brouillé ton pouvoir cette nuit."); this.note("🚫 ton pouvoir a été bloqué cette nuit"); });
       client.on("wolves", (m) => { this.wolfIds = m.wolfIds; this.wolfVictim = m.victimId; this.render(); });
       client.on("deaths", (m) => {
         for (const r of m.reveals) this.deadReveal[r.id] = r.roleId;
         this.dying = m.ids; this.render();
+        if (m.ids.length) void this.amb.sfx("death");
+        // The server tags a death with its art when the cause has its own scene
+        // (the Razana revenge); otherwise the dawn banner already carries it.
+        if (m.artKey) this.ui.phaseIntro(m.artKey, "Vengeance des Razana", m.text);
+        this.narrate(m.voiceUrl);
         setTimeout(() => { this.dying = []; this.render(); }, 800);
       });
       client.on("voteState", (m) => { this.voteTally = {}; for (const t of m.tally) this.voteTally[t.id] = t.votes; this.render(); });
-      client.on("voteResult", (m) => { this.ui.toast(m.eliminatedId ? `${this.nameOf(m.eliminatedId)} est éliminé (${m.nameMg}).` : "Personne n'est éliminé."); });
+      client.on("voteResult", (m) => { void this.amb.sfx("vote_result"); this.ui.toast(m.eliminatedId ? `${this.nameOf(m.eliminatedId)} est éliminé (${m.nameMg}).` : "Personne n'est éliminé."); });
       client.on("state", (m) => { this.players = m.players; this.phase = m.phase; this.render(); });
 
       client.on("finish", (m) => {
-        this.phase = "finished"; this.amb.play("revelation");
+        this.phase = "finished"; void this.amb.playMusic("revelation");
+        void this.amb.sfx(m.winner === "songomby" ? "victory_songomby" : "victory_village");
         const reveal: Record<string, string> = {}; m.reveal.forEach((r) => (reveal[r.id] = r.roleId));
         const vimg = m.winner === "songomby" ? "scene_victory_songomby" : "scene_victory_village";
         this.ui.phaseIntro(vimg, winnerTitle(m.winner), m.text);
+        // the AI writes a bespoke ending; without it, fall back to the recorded line
+        this.narrate(m.voiceUrl);
+        if (!m.voiceUrl) void this.amb.speak(m.winner === "songomby" ? "vo_victory_songomby" : "vo_victory_village");
         this.ui.setBanner(vimg, winnerTitle(m.winner), m.text, 0);
         this.ui.setVillage(this.players, this.selfId, this.narratorId, { roles: reveal });
         const h = this.ui.el;
@@ -370,10 +407,14 @@ export class Game {
       case "mpamosavy": return [h("div", { class: "hint" }, "Lance une malédiction nocturne sur un joueur — touche une carte.")];
       case "mpisikidy": return [h("div", { class: "hint" }, "Lis les signes d'un joueur — touche une carte.")];
       case "songomby": return [h("div", { class: "hint" }, "Choisis ta victime — touche une carte.")];
-      case "fanany": return [h("div", { class: "hint" }, "Pose ta Marque funeste — touche une carte.")];
+      // The Fanany acts in daylight, so the banner shows the debate scene — its own
+      // art has no other place to appear.
+      case "fanany": return [this.promptArt(h, "power_fanany_marque"), h("div", { class: "hint" }, "Pose ta Marque funeste — touche une carte.")];
       case "vote": return [h("div", { class: "hint" }, "Vote pour éliminer un suspect — touche une carte.")];
       case "ombiasy": {
-        if (this.exileMode) return [h("div", { class: "hint" }, "Choisis qui bannir par rituel d'exil — touche une carte.")];
+        // Exile shares the Ombiasy phase banner with the remedy; swap the art so
+        // the two choices do not look identical.
+        if (this.exileMode) return [this.promptArt(h, "power_ombiasy_exil"), h("div", { class: "hint" }, "Choisis qui bannir par rituel d'exil — touche une carte.")];
         return [
           h("div", { class: "hint" }, this.wolfVictim ? `Victime des Songomby : ${this.nameOf(this.wolfVictim)}.` : "Aucune victime cette nuit."),
           h("div", { class: "row center wrap" },
@@ -387,14 +428,30 @@ export class Game {
     }
   }
 
+  /** Banner for a power whose action has no phase art of its own. */
+  private promptArt(h: UI["el"], stem: string): HTMLElement {
+    return h("div", { class: "prompt-art", style: `background-image:url(${imageUrl(stem)})` });
+  }
+
   private pick(id: string) {
     if (!this.prompt) return;
     const k = this.prompt.kind;
+    void this.amb.sfx(k === "vote" ? "vote_cast" : "tap");
     if (k === "vote") { this.client?.vote(id); return; } // can change until tally
     if (k === "ombiasy") { if (this.exileMode) { this.client?.action(id, "exile"); this.exileMode = false; this.prompt = null; this.render(); } return; }
     // zazavavindrano / kalanoro / kinoly / mpamosavy / mpisikidy / songomby / fanany: single pick
     this.client?.action(id);
     this.prompt = null; this.render();
+  }
+
+  /**
+   * Speak a server-provided line and hold the full-screen flourish for as long as
+   * it lasts — otherwise the art dissolves mid-sentence and the narration finishes
+   * over the village board.
+   */
+  private narrate(ref: string | undefined) {
+    if (!ref) return;
+    void this.amb.speak(apiMediaUrl(ref)).then((ms) => { if (ms) this.ui.extendPhaseIntro(ms); });
   }
 
   private note(entry: string) { this.journal.push(entry); if (this.journal.length > 20) this.journal.shift(); this.render(); }

@@ -40,12 +40,31 @@ réponse/le rôle n'est jamais envoyé à un client qui n'y a pas droit.
 Vite + TypeScript, UI DOM/CSS + ambiance audio. Multijoueur **server‑authoritatif**
 sur **core‑api** (`/angano/rt`). Aucun rôle/secret ne transite vers les mauvais clients.
 
+## Son
+
+Trois bus indépendants (`src/audio/engine.ts`) : ambiance bouclée, bruitages
+ponctuels, et voix off qui **baisse l'ambiance** sous elle. Volumes et coupure
+persistés ; quand le navigateur retient l'audio faute de geste utilisateur, l'UI le
+signale au lieu de rester muette en silence.
+
+La **voix off** se scinde en deux : les répliques à texte fixe (révélations de rôle,
+victoires) sont livrées en fichiers, tandis que la légende écrite par l'IA est
+synthétisée au runtime par core-api. Voir `docs/direction-sonore.md`.
+
+Les clés d'ambiance viennent du **serveur** ; `src/audio/manifest.ts` les résout en
+fichiers via une chaîne de repli, si bien qu'une piste non encore produite retombe
+sur un placeholder au lieu de rendre la phase muette.
+
 ## Développer
 
 ```bash
 bun install
 bun run dev    # http://localhost:5173
-bun run build  # type-check + bundle → dist/
+bun run build  # check assets + type-check + bundle → dist/
+
+bun run check:assets   # aucun visuel/son référencé ne manque (lancé par le build)
+bun run opt:images     # ré-encode les PNG en WebP
+ELEVENLABS_API_KEY=sk_... bun run gen:audio   # bruitages + voix off statique
 ```
 
 Pointer vers un core‑api local : `VITE_API_BASE=http://localhost:3000 bun run dev`.
@@ -62,6 +81,11 @@ Connecter le repo (preset **Vite**, build `dist`), domaine `angano.njakasoa.xyz`
 
 ## Assets
 
-`public/assets/images/*.png` (art de phase, redimensionné) et
-`public/assets/audio/*.mp3` (ambiance par phase) sont recyclés depuis le repo
-Flutter `loupgarou` comme placeholders — à remplacer par des créations originales.
+`public/assets/images/*.webp` — illustrations originales (masters PNG générés depuis
+`docs/illustrations-prompts.csv`, ré-encodés en WebP pour la livraison : 19 Mo → 1,5 Mo).
+`brand_icon` / `brand_og` restent en PNG pour les favicons et les robots sociaux.
+
+`public/assets/audio/` — bruitages (`sfx_*`) et voix off (`vo_*`) produits via
+ElevenLabs depuis `scripts/audio-plan.ts`. Les **ambiances de phase** sont encore les
+pistes recyclées du repo Flutter `loupgarou` ; la chaîne de repli du manifeste permet
+de les remplacer fichier par fichier, sans toucher au code.

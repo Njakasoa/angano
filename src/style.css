@@ -12,7 +12,7 @@ body {
 }
 #app { min-height: 100dvh; }
 .screen.center { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px;
-  background: linear-gradient(rgba(11,14,26,.74), rgba(11,14,26,.9)), url(/assets/images/scene_menu.png) center/cover no-repeat; }
+  background: linear-gradient(rgba(11,14,26,.74), rgba(11,14,26,.9)), url(/assets/images/scene_menu.webp) center/cover no-repeat; }
 
 .card { width: 100%; max-width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
 .card.wide { max-width: 520px; }
@@ -63,6 +63,12 @@ body {
 .phase-text { color: #dfe6ff; font-weight: 700; text-shadow: 0 1px 8px #000; }
 .day-badge { position: absolute; top: 10px; left: 12px; z-index: 1; background: rgba(0,0,0,.4); padding: 5px 11px; border-radius: 999px; font-weight: 800; font-size: .8rem; }
 .mute { position: absolute; top: 10px; right: 12px; z-index: 1; background: rgba(0,0,0,.4); border: none; color: #fff; font-size: 1.1rem; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; }
+/* the browser is withholding audio until a gesture — make that visible rather than silently mute */
+.mute.blocked { background: var(--gold); color: #1a1400; animation: mutePulse 1.6s ease-in-out infinite; }
+@keyframes mutePulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,193,90,.55); } 50% { box-shadow: 0 0 0 8px rgba(232,193,90,0); } }
+
+/* art for a power whose action has no phase banner (Fanany mark, Ombiasy exile) */
+.prompt-art { height: 84px; border-radius: 12px; background-size: cover; background-position: center 32%; margin-bottom: 8px; border: 1px solid var(--line); }
 .timer-bar { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; z-index: 2; background: linear-gradient(90deg, var(--gold), var(--accent)); transform-origin: left; }
 .timer-bar.hidden { opacity: 0; }
 
@@ -86,7 +92,6 @@ body {
 .rc-name { font-family: "Cinzel", serif; font-weight: 800; font-size: 1.15rem; }
 .rc-epithet { color: var(--moon); font-weight: 800; font-size: .8rem; font-style: italic; margin: 1px 0 2px; }
 .rc-desc { color: var(--muted); font-weight: 700; font-size: .85rem; }
-.rc-lover { color: var(--evil); font-weight: 800; font-size: .85rem; margin-top: 3px; }
 
 .nar-title { font-family: "Cinzel", serif; font-weight: 800; color: var(--gold); text-align: center; margin-bottom: 8px; }
 .nar-script { background: #0f1424; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
@@ -184,7 +189,7 @@ body {
 @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img { animation: none !important; }
+  .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img, .mute.blocked { animation: none !important; }
   .timer-bar { transition: none !important; }
 }
 
@@ -198,9 +203,15 @@ body {
 .rs-d { color: var(--muted); font-weight: 700; font-size: .9rem; margin-top: 3px; }
 .rc-goal { color: var(--gold); font-weight: 800; font-size: .82rem; margin-top: 4px; }
 .codex { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
-.codex-tile { display: flex; gap: 10px; align-items: center; background: #0f1424; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
+.codex-tile { display: flex; flex-direction: column; gap: 8px; background: #0f1424; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
 .codex-tile.evil { border-color: var(--evil); } .codex-tile.good { border-color: var(--good); } .codex-tile.neutral { border-color: var(--gold); }
+.ct-head { display: flex; gap: 10px; align-items: center; }
 .ct-img { width: 56px; height: 56px; border-radius: 10px; background-size: cover; background-position: center; flex: 0 0 auto; }
+/* power gallery — the only surface where passives and day actions are shown */
+.ct-powers { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.ct-power { margin: 0; }
+.ct-power-img { height: 54px; border-radius: 8px; background-size: cover; background-position: center 30%; }
+.ct-power figcaption { color: var(--muted); font-weight: 800; font-size: .68rem; text-align: center; margin-top: 3px; }
 .ct-name { font-family: "Cinzel", serif; font-weight: 800; }
 .ct-desc { color: var(--muted); font-weight: 700; font-size: .82rem; }
 .presets { display: flex; gap: 6px; flex-wrap: wrap; }

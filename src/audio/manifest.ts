@@ -14,17 +14,24 @@
  * and `npm run check:assets` fails the build if a chain has no file at all.
  */
 
-/** Looping per-phase ambiance. Keys mirror core-api's `PHASE_ASSET[*].audio`. */
+/**
+ * Looping per-phase ambiance. Keys mirror core-api's `PHASE_ASSET[*].audio`.
+ *
+ * Every phase now owns a composed bed, so the chains hold a single entry — the
+ * recycled Loup-Garou placeholders they used to fall back on are gone. The chain
+ * shape stays: a new phase can name an unproduced track and list a stand-in behind
+ * it, and `check:assets` fails the build if a chain resolves to nothing.
+ */
 export const MUSIC: Record<string, string[]> = {
-  salon: ["salon.mp3", "introduction.mp3"],
-  legende: ["legende.mp3", "introduction.mp3"],
-  nuit_zazavavindrano: ["nuit_zazavavindrano.mp3", "voyante.mp3"],
-  nuit_mpamosavy: ["nuit_mpamosavy.mp3", "sorciere.mp3"],
-  nuit_mpisikidy: ["nuit_mpisikidy.mp3", "voyante.mp3"],
-  nuit_kalanoro: ["nuit_kalanoro.mp3", "voyante.mp3"],
-  nuit_kinoly: ["nuit_kinoly.mp3", "loupgarou.mp3"],
-  nuit_songomby: ["nuit_songomby.mp3", "loupgarou.mp3"],
-  nuit_ombiasy: ["nuit_ombiasy.mp3", "sorciere.mp3"],
+  salon: ["salon.mp3"],
+  legende: ["legende.mp3"],
+  nuit_zazavavindrano: ["nuit_zazavavindrano.mp3"],
+  nuit_mpamosavy: ["nuit_mpamosavy.mp3"],
+  nuit_mpisikidy: ["nuit_mpisikidy.mp3"],
+  nuit_kalanoro: ["nuit_kalanoro.mp3"],
+  nuit_kinoly: ["nuit_kinoly.mp3"],
+  nuit_songomby: ["nuit_songomby.mp3"],
+  nuit_ombiasy: ["nuit_ombiasy.mp3"],
   aube: ["aube.mp3"],
   debat: ["debat.mp3"],
   vote: ["vote.mp3"],

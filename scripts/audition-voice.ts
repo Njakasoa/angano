@@ -22,6 +22,7 @@
  *   --style <0..1>           Exagération du jeu d'acteur (peut déstabiliser au-delà de .6)
  *   --speed <0.7..1.2>       < 1 = plus lent, plus grave
  *   --similarity <0..1>      Fidélité au timbre d'origine
+ *   --as <nom>               Nomme la prise (sinon : slug du texte + empreinte)
  *
  * ── Exemples ─────────────────────────────────────────────────────────────────
  *   bun scripts/audition-voice.ts list --fr
@@ -95,6 +96,29 @@ function settingsFromFlags(): Settings {
 const label = (parts: (string | number | undefined)[]) =>
   parts.filter((p) => p !== undefined && p !== "").join("_").replace(/[^a-zA-Z0-9_.-]/g, "-");
 
+/**
+ * Filename tag for the line being spoken. A custom `--text` must not reuse the
+ * `--sample` name, or two takes of different wordings silently overwrite each other
+ * — which defeats the whole point of an A/B bench.
+ */
+function lineTag(sample: string, customText: string | undefined): string {
+  const explicit = flag("as");
+  if (explicit) return explicit;
+  if (!customText) return sample;
+
+  const slug = customText
+    .replace(/\[[^\]]*\]/g, " ")             // drop v3 audio tags from the slug
+    .toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    .split("-").slice(0, 4).join("-");
+  const tagged = /\[[^\]]*\]/.test(customText) ? "balise" : "brut";
+  // The slug ignores the tags, so two takes that differ ONLY by their direction
+  // would collide and silently overwrite each other. Fingerprint the raw text.
+  let h = 0;
+  for (let i = 0; i < customText.length; i++) h = (h * 31 + customText.charCodeAt(i)) >>> 0;
+  return `${tagged}-${slug || "texte"}-${h.toString(36).slice(0, 4)}`;
+}
+
 async function synth(text: string, voice: string, model: string, settings: Settings, file: string) {
   const body: Record<string, unknown> = { text: speakable(text), model_id: model };
   if (Object.keys(settings).length) body.voice_settings = settings;
@@ -145,7 +169,9 @@ async function main() {
   const voice = flag("voice") ?? DEFAULT_VOICE;
   const model = flag("model") ?? DEFAULT_MODEL;
   const sample = flag("sample") ?? "intro";
-  const text = flag("text") ?? SAMPLES[sample] ?? SAMPLES.intro!;
+  const customText = flag("text");
+  const text = customText ?? SAMPLES[sample] ?? SAMPLES.intro!;
+  const tag = lineTag(sample, customText);
   const base = settingsFromFlags();
 
   console.log(`\nTexte : « ${text.slice(0, 70)}… »`);
@@ -157,14 +183,14 @@ async function main() {
       if (!ids.length) { console.error("Usage : voices <id1,id2,...>"); process.exit(1); }
       console.log(`🎙️  ${ids.length} voix · modèle ${model}`);
       for (const [i, id] of ids.entries()) {
-        await synth(text, id, model, base, `${label(["voix", String(i + 1).padStart(2, "0"), id.slice(0, 8), sample])}.mp3`);
+        await synth(text, id, model, base, `${label(["voix", String(i + 1).padStart(2, "0"), id.slice(0, 8), tag])}.mp3`);
       }
       break;
     }
     case "models": {
       const models = ["eleven_v3", "eleven_multilingual_v2", "eleven_flash_v2_5"];
       console.log(`🎚️  ${models.length} modèles · voix ${voice}`);
-      for (const m of models) await synth(text, voice, m, base, `${label(["modele", m, sample])}.mp3`);
+      for (const m of models) await synth(text, voice, m, base, `${label(["modele", m, tag])}.mp3`);
       break;
     }
     case "sweep": {
@@ -181,13 +207,13 @@ async function main() {
       console.log(`🎛️  Balayage de ${param} · voix ${voice} · modèle ${model}`);
       for (const v of values) {
         const key = param === "similarity" ? "similarity_boost" : param;
-        await synth(text, voice, model, { ...base, [key]: v }, `${label(["sweep", param, v, sample])}.mp3`);
+        await synth(text, voice, model, { ...base, [key]: v }, `${label(["sweep", param, v, tag])}.mp3`);
       }
       break;
     }
     case "one": {
       console.log(`🎙️  voix ${voice} · modèle ${model} · ${JSON.stringify(base)}`);
-      await synth(text, voice, model, base, `${label(["essai", voice.slice(0, 8), model, sample, base.stability, base.style, base.speed])}.mp3`);
+      await synth(text, voice, model, base, `${label(["essai", voice.slice(0, 8), model, tag, base.stability, base.style, base.speed])}.mp3`);
       break;
     }
     default:

@@ -7,9 +7,10 @@
     "smoke": "bun smoke.ts",
     "reconnect": "bun reconnect.ts",
     "story": "bun story.ts",
+    "voice": "bun voice.ts",
     "scenarios": "node scenarios.mjs",
-    "test:proto": "bun smoke.ts && bun reconnect.ts && bun story.ts",
-    "test": "bun smoke.ts && bun reconnect.ts && bun story.ts && node scenarios.mjs"
+    "test:proto": "bun smoke.ts && bun reconnect.ts && bun story.ts && bun voice.ts",
+    "test": "bun smoke.ts && bun reconnect.ts && bun story.ts && bun voice.ts && node scenarios.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

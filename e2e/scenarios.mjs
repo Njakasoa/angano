@@ -354,6 +354,15 @@ async function scAssets() {
   // Every phase must end up with *something* to play, via the fallback chain.
   const audioHits = new Set(assetHits.filter((f) => f.endsWith(".mp3")));
   ok("Ambiances résolues par la chaîne de repli", audioHits.size >= 5, `${audioHits.size} pistes distinctes chargées`);
+
+  // The night defaults to foley, which is not produced yet: the chain must therefore
+  // have *tried* a foley bed and landed on the composed one. This is the mechanism
+  // that let the option ship before its audio — worth an assertion, because the
+  // failure mode is a silent night rather than an error.
+  const foleyTried = assetMisses.some((f) => /_foley\.mp3$/.test(f));
+  const nightPlayed = [...audioHits].some((f) => /^nuit_.*(?<!_foley)\.mp3$/.test(f));
+  ok("La nuit foley retombe sur le lit musical", foleyTried && nightPlayed,
+    `foley tenté=${foleyTried}, lit joué=${[...audioHits].filter((f) => f.startsWith("nuit_")).join(", ") || "aucun"}`);
   await teardown();
 }
 

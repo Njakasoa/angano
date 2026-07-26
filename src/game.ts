@@ -1,5 +1,6 @@
 import { UI } from "./ui/ui.ts";
 import { AudioEngine } from "./audio/engine.ts";
+import { nightSfx } from "./audio/manifest.ts";
 import { connectAngano, apiMediaUrl } from "./net/online.ts";
 import { packFor, proseFile, cueFile, type StoryPack } from "./audio/packs/index.ts";
 import { AnganoClient } from "./net/transport.ts";
@@ -99,6 +100,7 @@ export class Game {
       client.on("lobby", (m) => {
         this.selfId = m.selfId; this.hostId = m.hostId; this.narratorId = m.narratorId; this.players = m.players;
         this.sameRoom = !!m.config.sameRoom;
+        this.amb.setSoundscape(m.config.soundscape ?? "foley");
         this.applyAudioRouting();
         this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; this.seenRequestIds.clear(); this.pack = null; // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
@@ -126,6 +128,13 @@ export class Game {
         if (!wasValidated && m.story.status === "validated") void this.amb.sfx("mission_validated");
       });
       client.on("story", (m) => { this.story = m; this.pack = packFor(m.storyId); this.render(); });
+      // The deed, not the turn: the server sends this the instant the actor has
+      // chosen, a beat before the step advances. Around one table it is what tells
+      // the room the turn is over without anyone opening their eyes.
+      client.on("acted", (m) => {
+        const act = nightSfx(m.phase, "act");
+        if (act) void this.amb.sfx(act);
+      });
       client.on("narrator", (m) => {
         this.narratorPlayers = m.players; this.log = m.log; this.missionSheets = m.missionSheets ?? [];
         this.canRewind = !!m.canRewind;
@@ -149,6 +158,9 @@ export class Game {
         const headline = m.phase === "debat" || m.phase === "vote" || (isNight(m.phase) && !isNight(prev));
         const firstNight = isNight(m.phase) && !isNight(prev) && m.day === 1;
         if (isNight(m.phase) && !isNight(prev)) void this.amb.sfx("night_fall");
+        // Eyes are shut: this pair is the only thing that says whose turn it is.
+        const wake = nightSfx(m.phase, "wake");
+        if (wake && m.phase !== prev) void this.amb.sfx(wake);
         if (this.story && firstNight && !this.storyIntroShown) {
           this.storyIntroShown = true;
           this.ui.phaseIntro(m.imageKey, this.story.title, this.story.intro, { phaseMs: m.durationMs });

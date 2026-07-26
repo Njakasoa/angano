@@ -2,7 +2,7 @@
  * Generate the game's sound assets from `audio-plan.ts` via ElevenLabs.
  *
  *   ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts [--sfx] [--voice]
- *                                     [--ambiance] [--pack[=<id>]] [--force]
+ *                        [--ambiance] [--foley] [--pack[=<id>]] [--force]
  *
  * Default (no flag) produces sfx + voice: the two families that map cleanly onto
  * what the API does well. Ambiance is opt-in — see the note in audio-plan.ts.
@@ -15,7 +15,7 @@
  * stub behind that the fallback chain would then happily "resolve".
  */
 import { mkdir, writeFile, access, unlink } from "node:fs/promises";
-import { AMBIANCE, PACKS, SFX, VOICE } from "./audio-plan.ts";
+import { AMBIANCE, FOLEY, NIGHT_SFX, PACKS, SFX, VOICE } from "./audio-plan.ts";
 
 const KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_NARRATOR ?? "qCDtdqQv5bdcrgWED5k8"; // Arthur Martin (fr)
@@ -50,7 +50,7 @@ const SETTINGS = voiceSettings();
 const argv = process.argv.slice(2);
 const args = new Set(argv.map((a) => a.split("=")[0]!));
 const force = args.has("--force");
-const picked = ["--sfx", "--voice", "--ambiance", "--pack"].filter((f) => args.has(f));
+const picked = ["--sfx", "--voice", "--ambiance", "--foley", "--pack"].filter((f) => args.has(f));
 const want = picked.length ? new Set(picked) : new Set(["--sfx", "--voice"]);
 /** `--pack=barriere-rompue` narrows to one legend — a `--force` re-record of every
  *  pack is otherwise a large, and entirely avoidable, bill. */
@@ -176,8 +176,11 @@ async function main() {
   const count = (r: "written" | "skipped" | "failed") => { tally[r]++; };
 
   if (want.has("--sfx")) {
-    console.log(`\n🔊 Bruitages (${SFX.length})`);
-    for (const s of SFX) {
+    // The night one-shots ride along: same model, same budget, and they are useless
+    // one at a time — the table only reads them as a set.
+    const all = [...SFX, ...NIGHT_SFX];
+    console.log(`\n🔊 Bruitages (${all.length}, dont ${NIGHT_SFX.length} pour les tours de nuit)`);
+    for (const s of all) {
       count(await produce(s.key, s.file, () =>
         post(`${BASE}/v1/sound-generation`, { text: s.prompt, duration_seconds: s.seconds, prompt_influence: 0.6 })));
     }
@@ -189,6 +192,18 @@ async function main() {
       count(await produce(v.text.slice(0, 48) + "…", v.file, () =>
         post(`${BASE}/v1/text-to-speech/${VOICE_ID}?output_format=mp3_44100_128`,
           { text: speakable(v.text), model_id: MODEL, ...(SETTINGS ? { voice_settings: SETTINGS } : {}) })));
+    }
+  }
+
+  if (want.has("--foley")) {
+    // Foley, not music: these go through the sound model, which caps far below the
+    // composer's length — hence 20 s beds, closed into a loop the same way.
+    console.log(`\n🌙 Lits foley (${FOLEY.length}) — enregistrés puis refermés en boucle`);
+    for (const f of FOLEY) {
+      count(await produce(f.key, f.file, async () => {
+        const raw = await post(`${BASE}/v1/sound-generation`, { text: f.prompt, duration_seconds: f.seconds, prompt_influence: 0.5 });
+        return raw ? await seamlessLoop(raw) : null;
+      }));
     }
   }
 

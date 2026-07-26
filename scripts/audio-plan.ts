@@ -100,3 +100,62 @@ export interface PackSpec { id: string; voice: string; lines: PackLine[] }
 export const PACKS: PackSpec[] = [
   { id: LAC_ID, voice: "0dPqNXnhg2bmxQv1WKDp", lines: LAC },               // Grandpa Storyteller Oxley
 ];
+
+/**
+ * Foley beds for the night — the alternative the `soundscape` option selects, and
+ * the default one.
+ *
+ * A composed bed is beautiful and says nothing. Around one table every player has
+ * their eyes shut, and what should reach them is the *place*: water closing, embers
+ * breathing, reeds parting. So these are recorded as sound, not as music — the same
+ * seamless-loop treatment, none of the instrumentation.
+ *
+ * They sit in front of the composed beds in the manifest chain rather than replacing
+ * them: an unproduced foley bed falls back to its music, so the option ships before
+ * the audio does. Only the seven night turns get one; the day keeps its score.
+ */
+export const FOLEY_STYLE =
+  "field-recorded natural ambience, no music, no instruments, no melody, no vocals, no speech. " +
+  "Malagasy night: humid air, distant insects, close organic detail. Dry, intimate, cinematic. " +
+  "Seamless looping bed — constant intensity, no build, no fade, no ending";
+
+export const FOLEY: AmbianceSpec[] = [
+  { key: "nuit_zazavavindrano_foley", file: "nuit_zazavavindrano_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A still river under the moon: slow water lapping at reeds, a faint deep swirl below the surface, dripping, wet stone.` },
+  { key: "nuit_mpamosavy_foley", file: "nuit_mpamosavy_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A sorcerer's fire: embers ticking and breathing, fine ash falling, dry bones and beads shifting, an occasional low exhale of air over coals.` },
+  { key: "nuit_mpisikidy_foley", file: "nuit_mpisikidy_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A diviner's mat: seeds shifting in a wooden bowl, a woven mat creaking, thin smoke, a very soft slow breath.` },
+  { key: "nuit_kalanoro_foley", file: "nuit_kalanoro_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. The forest floor at night: wet earth, dripping leaves, a small creature moving through undergrowth then stopping, crickets thinning out.` },
+  { key: "nuit_kinoly_foley", file: "nuit_kinoly_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. Underground stillness: muffled air inside stone tombs, a very distant slow breathing, faint grit falling, almost silence.` },
+  { key: "nuit_songomby_foley", file: "nuit_songomby_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. Reeds in a rice paddy: a heavy animal breathing low and close, wet hooves in mud, reeds pushed aside, water disturbed.` },
+  { key: "nuit_ombiasy_foley", file: "nuit_ombiasy_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A healer's hut: amulets and beads clicking softly, a glass vial set down on wood, dried plants rustling, warm coals nearby.` },
+];
+
+/**
+ * Two one-shots per night turn: `wake_*` as the turn opens, `act_*` the instant its
+ * actor has chosen (core-api's `acted`).
+ *
+ * These carry the night for a table playing with its eyes shut, so each has to be
+ * *recognisable on its own* — a different material per role, not seven variations of
+ * a rustle. `wake` says who is awake; `act` says the deed is done, and lands harder.
+ */
+export const NIGHT_SFX: SfxSpec[] = [
+  { key: "wake_zazavavindrano", file: "sfx_wake_zazavavindrano.mp3", seconds: 2.5, prompt: `${SFX_STYLE}. Water parting as something rises: a smooth swell breaking the surface, streaming droplets, held open.` },
+  { key: "act_zazavavindrano", file: "sfx_act_zazavavindrano.mp3", seconds: 2.0, prompt: `${SFX_STYLE}. The water closes over: a single soft swallow of the surface, then stillness. A vow sealed underwater.` },
+
+  { key: "wake_mpamosavy", file: "sfx_wake_mpamosavy.mp3", seconds: 2.5, prompt: `${SFX_STYLE}. Coals stirred awake: embers cracking, a breath blown across ash, a faint sickly hiss.` },
+  { key: "act_mpamosavy", file: "sfx_act_mpamosavy.mp3", seconds: 2.0, prompt: `${SFX_STYLE}. A curse laid: a handful of ash thrown onto fire, one sharp flare, then a dead hush.` },
+
+  { key: "wake_mpisikidy", file: "sfx_wake_mpisikidy.mp3", seconds: 2.5, prompt: `${SFX_STYLE}. Divination seeds gathered: a wooden bowl lifted, seeds shifting and settling in cupped hands.` },
+  { key: "act_mpisikidy", file: "sfx_act_mpisikidy.mp3", seconds: 2.0, prompt: `${SFX_STYLE}. The sikidy is cast: seeds scattered sharply across a woven mat, then one clear soft chime of understanding.` },
+
+  { key: "wake_kalanoro", file: "sfx_wake_kalanoro.mp3", seconds: 2.5, prompt: `${SFX_STYLE}. Something small moves in the undergrowth: quick light steps on wet leaves, a branch flicking back.` },
+  { key: "act_kalanoro", file: "sfx_act_kalanoro.mp3", seconds: 2.0, prompt: `${SFX_STYLE}. The trail is read: two wet footsteps in mud, then a sudden stop. Silence where the next step should be.` },
+
+  { key: "wake_kinoly", file: "sfx_wake_kinoly.mp3", seconds: 3.0, prompt: `${SFX_STYLE}. Something wakes underground: stone grinding faintly, dry earth trickling, one long slow breath drawn where there should be none.` },
+  { key: "act_kinoly", file: "sfx_act_kinoly.mp3", seconds: 2.0, prompt: `${SFX_STYLE}. A haunting settles on a sleeper: a cold exhale very close to the ear, long fingernails dragging once on wood.` },
+
+  { key: "wake_songomby", file: "sfx_wake_songomby.mp3", seconds: 3.0, prompt: `${SFX_STYLE}. The beast rises in the reeds: heavy nostrils snorting, reeds pushed apart, a hoof pulling out of thick mud.` },
+  { key: "act_songomby", file: "sfx_act_songomby.mp3", seconds: 2.2, prompt: `${SFX_STYLE}. The prey is chosen: a sudden lunge through water and reeds, cut short. No cry — the night simply closes.` },
+
+  { key: "wake_ombiasy", file: "sfx_wake_ombiasy.mp3", seconds: 2.5, prompt: `${SFX_STYLE}. Amulets taken down: ody charms and beads clicking together on cord, dried plants rustling, a lid unstoppered.` },
+  { key: "act_ombiasy", file: "sfx_act_ombiasy.mp3", seconds: 2.0, prompt: `${SFX_STYLE}. The rite is done: a glass vial set firmly down on wood, one warm resonant hum fading out.` },
+];

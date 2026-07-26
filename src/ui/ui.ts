@@ -117,6 +117,7 @@ export class UI {
     const themeChk = h("button", { class: "chip", "data-on": "0", title: "L'IA invente une légende et l'ambiance pour cette partie (sinon partie classique)" }, "✨ Histoire IA") as HTMLButtonElement;
     const roomChk = h("button", { class: "chip", "data-on": "0", title: "Tout le monde est dans la même pièce : seul le téléphone du narrateur diffuse le son, et le narrateur donne le rythme" }, "🪑 Même pièce") as HTMLButtonElement;
     const autoChk = h("button", { class: "chip on", "data-on": "1", title: "Les phases s'enchaînent toutes seules. Décoché, le narrateur passe chaque phase à la main." }, "⏱ Avance auto") as HTMLButtonElement;
+    const foleyChk = h("button", { class: "chip on", "data-on": "1", title: "La nuit s'écoute : eau, braises, roseaux, un son par tour. Décoché, on garde les lits musicaux composés." }, "🌙 Nuit sonore") as HTMLButtonElement;
     const songStep = (d: number) => h("button", { class: "btn ghost step", onclick: () => { songInput.value = String(Math.max(1, Math.min(5, (parseInt(songInput.value) || 1) + d))); pushConfig(); } }, d > 0 ? "+" : "−");
     const songStepper = h("div", { class: "stepper" }, songStep(-1), songInput, songStep(1));
     const startBtn = h("button", { class: "btn big", onclick: o.onStart }, "Lancer la partie") as HTMLButtonElement;
@@ -128,7 +129,7 @@ export class UI {
       h("label", { class: "lbl" }, "Rôles spéciaux"), roleToggles,
       h("label", { class: "lbl" }, "Rythme"), h("div", { class: "row" }, paceSelect, manualChk),
       h("label", { class: "lbl" }, "Ambiance"), h("div", { class: "row" }, themeChk),
-      h("label", { class: "lbl" }, "Table"), h("div", { class: "row wrap" }, roomChk, autoChk));
+      h("label", { class: "lbl" }, "Table"), h("div", { class: "row wrap" }, roomChk, autoChk, foleyChk));
 
     const pushConfig = () => o.onConfig({
       songomby: Math.max(1, Math.min(5, parseInt(songInput.value) || 1)),
@@ -138,6 +139,7 @@ export class UI {
       theme: themeChk.getAttribute("data-on") === "1",
       sameRoom: roomChk.getAttribute("data-on") === "1",
       autoAdvance: autoChk.getAttribute("data-on") === "1",
+      soundscape: foleyChk.getAttribute("data-on") === "1" ? "foley" : "musique",
     });
     OPTIONAL_ROLES.forEach((r) => {
       roleToggles.append(h("button", { class: "chip on" + roleToggleClass(r.team), "data-r": r.id, title: r.desc, onclick: (e: Event) => { (e.currentTarget as HTMLButtonElement).classList.toggle("on"); pushConfig(); } }, r.nameMg));
@@ -161,6 +163,7 @@ export class UI {
       pushConfig();
     };
     autoChk.onclick = () => { const on = autoChk.getAttribute("data-on") !== "1"; autoChk.setAttribute("data-on", on ? "1" : "0"); autoChk.classList.toggle("on", on); pushConfig(); };
+    foleyChk.onclick = () => { const on = foleyChk.getAttribute("data-on") !== "1"; foleyChk.setAttribute("data-on", on ? "1" : "0"); foleyChk.classList.toggle("on", on); pushConfig(); };
     narBtn.onclick = () => o.onNarrator(narBtn.getAttribute("data-on") !== "1");
 
     this.mount(h("div", { class: "screen center" },
@@ -195,6 +198,7 @@ export class UI {
       const th = !!m.config.theme; themeChk.setAttribute("data-on", th ? "1" : "0"); themeChk.classList.toggle("on", th);
       const sr = !!m.config.sameRoom; roomChk.setAttribute("data-on", sr ? "1" : "0"); roomChk.classList.toggle("on", sr);
       const aa = m.config.autoAdvance ?? !sr; autoChk.setAttribute("data-on", aa ? "1" : "0"); autoChk.classList.toggle("on", aa);
+      const fo = (m.config.soundscape ?? "foley") === "foley"; foleyChk.setAttribute("data-on", fo ? "1" : "0"); foleyChk.classList.toggle("on", fo);
       startBtn.style.display = isHost ? "" : "none";
       const seats = m.players.filter((p) => p.id !== m.narratorId).length;
       startBtn.disabled = !m.narratorId || seats < 4;

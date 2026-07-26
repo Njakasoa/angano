@@ -16,7 +16,7 @@
 import { access } from "node:fs/promises";
 import { MUSIC, SFX, VOICE } from "../src/audio/manifest.ts";
 import { ROLES } from "../src/core/roles.ts";
-import { PACKS } from "./audio-plan.ts";
+import { FOLEY, PACKS } from "./audio-plan.ts";
 
 const AUDIO = new URL("../public/assets/audio/", import.meta.url).pathname;
 const IMAGES = new URL("../public/assets/images/", import.meta.url).pathname;
@@ -41,6 +41,14 @@ async function main() {
     for (const file of candidates) if (await exists(AUDIO + file)) found.push(file);
     if (!found.length) errors.push(`music "${key}" — aucun fichier (${candidates.join(", ")}) → phase muette`);
     else if (found[0] !== candidates[0]) warnings.push(`music "${key}" — repli sur ${found[0]} (${candidates[0]} pas encore produit)`);
+  }
+
+  // ── foley night beds: warn only ──
+  // They sit in front of the composed beds in the chain, so an unproduced one falls
+  // back to its music rather than to silence. That is exactly why the `soundscape`
+  // option could ship before the audio did.
+  for (const f of FOLEY) {
+    if (!(await exists(AUDIO + f.file))) warnings.push(`foley "${f.key}" — ${f.file} absent, repli sur le lit musical`);
   }
 
   // ── one-shots and static voice: missing is tolerated, just report it ──

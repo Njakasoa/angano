@@ -1,4 +1,4 @@
-import { MUSIC, SFX, VOICE, audioUrl, musicCandidates, type SfxKey } from "./manifest.ts";
+import { MUSIC, SFX, VOICE, audioUrl, musicCandidates, type SfxKey, type Soundscape } from "./manifest.ts";
 
 /**
  * Three-bus audio engine: looping `music`, polyphonic one-shot `sfx`, and an
@@ -44,6 +44,7 @@ export class AudioEngine {
   private ducked = false;
   private unlocked = false;
   private silenced = false;   // same-room: this device is not the speaker
+  private soundscape: Soundscape = "foley";
   private gestureBound = false;
   private sequenceToken = 0; // increments so a newer narration abandons the older queue
 
@@ -55,6 +56,17 @@ export class AudioEngine {
   }
 
   // ── preferences ───────────────────────────────────────
+  /**
+   * Which bed the night plays. Set from the room config before the first phase; a
+   * change drops the current key so the next `playMusic` re-resolves instead of
+   * short-circuiting on "same key, already playing".
+   */
+  setSoundscape(mode: Soundscape) {
+    if (mode === this.soundscape) return;
+    this.soundscape = mode;
+    this.musicKey = "";
+  }
+
   /**
    * Same-room games play from the narrator's phone alone. Eight devices running the
    * same ambiance a second apart is worse than none, so every other device goes
@@ -94,7 +106,7 @@ export class AudioEngine {
     if (!key || key === this.musicKey) return;
     this.musicKey = key;
 
-    const src = await this.resolve(musicCandidates(key));
+    const src = await this.resolve(musicCandidates(key, this.soundscape));
     if (!src || this.musicKey !== key) return; // nothing to play, or superseded
 
     const next = new Audio(src);
@@ -195,7 +207,7 @@ export class AudioEngine {
    */
   async warm() {
     await Promise.all([
-      ...Object.keys(MUSIC).map((k) => this.resolve(musicCandidates(k))),
+      ...Object.keys(MUSIC).map((k) => this.resolve(musicCandidates(k, this.soundscape))),
       ...Object.values(SFX).map((candidates) => this.resolve(candidates)),
     ]);
   }

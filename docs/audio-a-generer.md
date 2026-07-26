@@ -2,7 +2,7 @@
 
 > Généré par `bun run doc:audio`. Ne pas éditer à la main.
 
-**75 fichiers attendus** · 28 à générer · 9.5 Mo · 10.3 min
+**96 fichiers attendus** · 49 à générer · 9.5 Mo · 10.3 min
 
 ## Régénérer un son
 
@@ -55,6 +55,20 @@ reçoivent une balise unique déduite de leur rôle. Voir `docs/direction-sonore
 | `vo_role_mpamosavy.mp3` | **à générer** | — | voix statique | Tu es Mpamosavy, sorcier de l'ombre. Maudis … | — | `--voice` |
 | `vo_victory_village.mp3` | **à générer** | — | voix statique | Le village a chassé tous les monstres. L'aub… | — | `--voice` |
 | `vo_victory_songomby.mp3` | **à générer** | — | voix statique | Les Songomby ont fait taire le village. Plus… | — | `--voice` |
+| `sfx_wake_zazavavindrano.mp3` | **à générer** | — | tour de nuit | wake_zazavavindrano | — | `--sfx` |
+| `sfx_act_zazavavindrano.mp3` | **à générer** | — | tour de nuit | act_zazavavindrano | — | `--sfx` |
+| `sfx_wake_mpamosavy.mp3` | **à générer** | — | tour de nuit | wake_mpamosavy | — | `--sfx` |
+| `sfx_act_mpamosavy.mp3` | **à générer** | — | tour de nuit | act_mpamosavy | — | `--sfx` |
+| `sfx_wake_mpisikidy.mp3` | **à générer** | — | tour de nuit | wake_mpisikidy | — | `--sfx` |
+| `sfx_act_mpisikidy.mp3` | **à générer** | — | tour de nuit | act_mpisikidy | — | `--sfx` |
+| `sfx_wake_kalanoro.mp3` | **à générer** | — | tour de nuit | wake_kalanoro | — | `--sfx` |
+| `sfx_act_kalanoro.mp3` | **à générer** | — | tour de nuit | act_kalanoro | — | `--sfx` |
+| `sfx_wake_kinoly.mp3` | **à générer** | — | tour de nuit | wake_kinoly | — | `--sfx` |
+| `sfx_act_kinoly.mp3` | **à générer** | — | tour de nuit | act_kinoly | — | `--sfx` |
+| `sfx_wake_songomby.mp3` | **à générer** | — | tour de nuit | wake_songomby | — | `--sfx` |
+| `sfx_act_songomby.mp3` | **à générer** | — | tour de nuit | act_songomby | — | `--sfx` |
+| `sfx_wake_ombiasy.mp3` | **à générer** | — | tour de nuit | wake_ombiasy | — | `--sfx` |
+| `sfx_act_ombiasy.mp3` | **à générer** | — | tour de nuit | act_ombiasy | — | `--sfx` |
 | `salon.mp3` | 424 | 27.0 | ambiance | salon | — | `--ambiance` |
 | `legende.mp3` | 424 | 27.0 | ambiance | legende | — | `--ambiance` |
 | `nuit_zazavavindrano.mp3` | 424 | 27.0 | ambiance | nuit_zazavavindrano | — | `--ambiance` |
@@ -68,6 +82,13 @@ reçoivent une balise unique déduite de leur rôle. Voir `docs/direction-sonore
 | `debat.mp3` | 424 | 27.0 | ambiance | debat | — | `--ambiance` |
 | `vote.mp3` | 424 | 27.0 | ambiance | vote | — | `--ambiance` |
 | `revelation.mp3` | 424 | 27.0 | ambiance | revelation | — | `--ambiance` |
+| `nuit_zazavavindrano_foley.mp3` | **à générer** | — | lit foley | nuit_zazavavindrano_foley | — | `--foley` |
+| `nuit_mpamosavy_foley.mp3` | **à générer** | — | lit foley | nuit_mpamosavy_foley | — | `--foley` |
+| `nuit_mpisikidy_foley.mp3` | **à générer** | — | lit foley | nuit_mpisikidy_foley | — | `--foley` |
+| `nuit_kalanoro_foley.mp3` | **à générer** | — | lit foley | nuit_kalanoro_foley | — | `--foley` |
+| `nuit_kinoly_foley.mp3` | **à générer** | — | lit foley | nuit_kinoly_foley | — | `--foley` |
+| `nuit_songomby_foley.mp3` | **à générer** | — | lit foley | nuit_songomby_foley | — | `--foley` |
+| `nuit_ombiasy_foley.mp3` | **à générer** | — | lit foley | nuit_ombiasy_foley | — | `--foley` |
 | `vo_lj_prose_01.mp3` | **à générer** | — | pack · lac-jarres-blanches | intro | oui | `--pack=lac-jarres-blanches` |
 | `vo_lj_prose_02.mp3` | 140 | 8.9 | pack · lac-jarres-blanches | ambiance_night | oui | `--pack=lac-jarres-blanches` |
 | `vo_lj_prose_03.mp3` | 132 | 8.4 | pack · lac-jarres-blanches | ambiance_dawn | oui | `--pack=lac-jarres-blanches` |

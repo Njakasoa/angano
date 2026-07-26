@@ -12,7 +12,7 @@
  * Everything under `public/assets/audio` is committed, so `git status` lists what you
  * deleted and `git checkout -- <file>` takes back a deletion you regret.
  */
-import { AMBIANCE, PACKS, SFX, VOICE } from "./audio-plan.ts";
+import { AMBIANCE, FOLEY, NIGHT_SFX, PACKS, SFX, VOICE } from "./audio-plan.ts";
 
 const AUDIO = new URL("../public/assets/audio/", import.meta.url).pathname;
 const OUT = new URL("../docs/audio-a-generer.md", import.meta.url).pathname;
@@ -28,7 +28,9 @@ interface Row { family: string; key: string; file: string; cmd: string; directed
 const rows: Row[] = [
   ...SFX.map((s) => ({ family: "bruitage", key: s.key, file: s.file, cmd: "--sfx" })),
   ...VOICE.map((v) => ({ family: "voix statique", key: `${v.text.slice(0, 44)}…`, file: v.file, cmd: "--voice" })),
+  ...NIGHT_SFX.map((s) => ({ family: "tour de nuit", key: s.key, file: s.file, cmd: "--sfx" })),
   ...AMBIANCE.map((a) => ({ family: "ambiance", key: a.key, file: a.file, cmd: "--ambiance" })),
+  ...FOLEY.map((f) => ({ family: "lit foley", key: f.key, file: f.file, cmd: "--foley" })),
   ...PACKS.flatMap((p) => p.lines.map((l) => ({
     family: `pack · ${p.id}`, key: l.label, file: l.file,
     cmd: `--pack=${p.id}`, directed: l.direction ? "oui" : "non",

@@ -50,6 +50,18 @@ export const LEGACY_AUDIO_ALIAS: Record<string, string> = {
   loupgarou: "nuit_songomby",
 };
 
+/**
+ * The seven night turns, in the order core-api runs them. Each owns a foley bed and
+ * a pair of one-shots; the phase name *is* the role name, which is what lets the
+ * client derive every key from the phase the server sends.
+ */
+export const NIGHT_ROLES = [
+  "zazavavindrano", "mpamosavy", "mpisikidy", "kalanoro", "kinoly", "songomby", "ombiasy",
+] as const;
+
+/** Which bed plays under the night — chosen when the game is created. */
+export type Soundscape = "foley" | "musique";
+
 /** One-shot effects, fired by the client off game events. */
 export const SFX = {
   tap: ["sfx_tap.mp3"],
@@ -66,9 +78,35 @@ export const SFX = {
   timer_last: ["sfx_timer_last.mp3"],
   victory_village: ["sfx_victory_village.mp3"],
   victory_songomby: ["sfx_victory_songomby.mp3"],
+
+  // ── the night, heard rather than read ──
+  // Two per turn: `wake_*` opens it, `act_*` closes it on the deed. Around one table
+  // every player has their eyes shut, so this pair is the only thing that tells them
+  // whose turn it is and when it is over. Neither leaks: core-api builds the night
+  // from the living roles, so the turn's very existence is already public.
+  wake_zazavavindrano: ["sfx_wake_zazavavindrano.mp3"],
+  act_zazavavindrano: ["sfx_act_zazavavindrano.mp3"],
+  wake_mpamosavy: ["sfx_wake_mpamosavy.mp3"],
+  act_mpamosavy: ["sfx_act_mpamosavy.mp3"],
+  wake_mpisikidy: ["sfx_wake_mpisikidy.mp3"],
+  act_mpisikidy: ["sfx_act_mpisikidy.mp3"],
+  wake_kalanoro: ["sfx_wake_kalanoro.mp3"],
+  act_kalanoro: ["sfx_act_kalanoro.mp3"],
+  wake_kinoly: ["sfx_wake_kinoly.mp3"],
+  act_kinoly: ["sfx_act_kinoly.mp3"],
+  wake_songomby: ["sfx_wake_songomby.mp3"],
+  act_songomby: ["sfx_act_songomby.mp3"],
+  wake_ombiasy: ["sfx_wake_ombiasy.mp3"],
+  act_ombiasy: ["sfx_act_ombiasy.mp3"],
 } satisfies Record<string, string[]>;
 
 export type SfxKey = keyof typeof SFX;
+
+/** `wake_songomby` / `act_songomby` from a phase, or nothing if it is not a night turn. */
+export function nightSfx(phase: string, moment: "wake" | "act"): SfxKey | undefined {
+  const key = `${moment}_${phase}`;
+  return key in SFX ? (key as SfxKey) : undefined;
+}
 
 /**
  * Static spoken lines — fixed text, so they ship as files rather than costing a
@@ -100,8 +138,17 @@ export function canonicalAudioKey(key: string): string {
   return LEGACY_AUDIO_ALIAS[key] ?? key;
 }
 
-/** Candidate files for a music key, most-wanted first. */
-export function musicCandidates(key: string): string[] {
+/**
+ * Candidate files for a music key, most-wanted first.
+ *
+ * In `foley` mode a night key prefers its foley bed — water, embers, reeds — and the
+ * chain carries the composed bed right behind it. That is the whole safety net: a
+ * foley bed that has not been produced yet degrades to the music instead of silence,
+ * so the option can ship before the beds do.
+ */
+export function musicCandidates(key: string, soundscape: Soundscape = "foley"): string[] {
   const canonical = canonicalAudioKey(key);
-  return MUSIC[canonical] ?? [`${canonical}.mp3`];
+  const chain = MUSIC[canonical] ?? [`${canonical}.mp3`];
+  const nightly = (NIGHT_ROLES as readonly string[]).some((r) => canonical === `nuit_${r}`);
+  return soundscape === "foley" && nightly ? [`${canonical}_foley.mp3`, ...chain] : chain;
 }

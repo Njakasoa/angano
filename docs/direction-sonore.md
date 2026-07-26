@@ -106,6 +106,31 @@ La table est dans `core-api/src/games/angano/pronunciation.ts`, **dupliquée** d
 prononcée change ; tout ce qui est affiché garde son orthographe réelle.* En ajoutant
 un rôle, penser aux deux fichiers.
 
+## La nuit s'écoute
+
+Autour d'une table, tout le monde ferme les yeux. L'écran nomme pourtant chaque étape
+(`Nuit 2 — Ombiasy`) et personne ne le lit : c'est au son de porter la nuit.
+
+**Deux bruitages par tour.** `wake_<rôle>` à l'ouverture — qui s'éveille — et
+`act_<rôle>` à l'instant où l'acteur a choisi, sur le message `acted` du serveur. Le
+second est le plus important : il dit que c'est fini, sans que personne rouvre les
+yeux. Chaque rôle a sa matière propre (l'eau, les braises, les graines, la vase, la
+pierre, les roseaux, les amulettes) pour être reconnaissable seul, pas comme la
+variation d'un même froissement.
+
+**Un lit foley par tour**, choisi au salon via l'option *🌙 Nuit sonore*, active par
+défaut. Le lit musical composé reste disponible en décochant. Les deux cohabitent
+dans la chaîne de repli : `musicCandidates` place `nuit_songomby_foley.mp3` devant
+`nuit_songomby.mp3`, donc **un lit foley non produit retombe sur sa musique** — c'est
+ce qui a permis de livrer l'option avant l'audio.
+
+Rien de tout ça ne trahit quoi que ce soit. core-api construit la nuit à partir des
+rôles **vivants** : un Ombiasy mort n'a tout simplement plus de tour, et l'étape du
+Kinoly n'apparaît qu'une fois qu'il s'est éveillé. L'existence d'un tour est donc
+déjà publique, dans `phase`, avant qu'aucun son ne joue. Une seule exception tenue
+côté serveur : la Marque du Fanany passe par le même gestionnaire d'action mais en
+plein jour, et reste muette — son secret est toute la mécanique.
+
 ## Packs de narration enregistrés
 
 L'expérience par défaut : une légende fixe, entièrement pré-enregistrée. Les données
@@ -205,6 +230,9 @@ séance d'écoute.
 - ⚠️ **0 voix off statique sur 11** — toutes rejetées, à refaire
 - ✅ **13 ambiances de phase** composées, refermées en boucle par ffmpeg
 - ⚠️ **1 pack sur 4 légendes** — le Lac, 26 lignes gardées sur 37
+- ⏳ **14 bruitages de tour de nuit** (`--sfx`) et **7 lits foley** (`--foley`) —
+  écrits, jamais générés. Le jeu tourne sans : les tours sont muets et la nuit joue
+  ses lits musicaux.
 
 Une clé d'ambiance sans fichier retombe sur un placeholder via la chaîne de repli de
 `src/audio/manifest.ts` — déposer `nuit_songomby.mp3` suffit à le remplacer, sans

@@ -26,6 +26,12 @@ export interface GameConfig {
   theme?: boolean;
   sameRoom?: boolean;
   autoAdvance?: boolean;
+  /**
+   * Which bed plays under the night. `foley` is the default: around one table the
+   * night is *listened to*, eyes shut, and a musical bed says nothing about what is
+   * happening. Presentation only — the server carries it so every device agrees.
+   */
+  soundscape?: "foley" | "musique";
 }
 export interface StoryAmbiance { night: string; dawn: string; debate: string; vote: string }
 export interface StoryComposition { songomby: number; roles: string[]; pace: Pace }
@@ -94,6 +100,8 @@ export type AnganoServerMsg =
   | { k: "narrator"; players: NarratorPlayer[]; log: string[]; missionSheets?: NarratorMissionSheet[]; canRewind?: boolean }
   | { k: "phase"; phase: Phase; day: number; audioKey: string; imageKey: string; durationMs: number; title: string; text: string; voiceUrl?: string; manualPacing?: boolean }
   | { k: "prompt"; kind: string; targets: PlayerPublic[]; options?: string[]; deadline: number }
+  /** A night step was completed by its actor(s) — the deed is done. Public. */
+  | { k: "acted"; phase: Phase }
   | { k: "seerResult"; targetId: string; roleId: string; nameMg: string; team?: Team }
   | { k: "trackResult"; targetId: string; visited: boolean; destinationId?: string | null }
   | { k: "fadyTrace"; targetId: string }

@@ -119,6 +119,11 @@ ne peut donc pas réenregistrer une légende avec la voix de l'autre.
 |---|---|---|
 | `lanternes-mangrove` — *Ankivy des Eaux Grises* | voix clonée (`LOF1yccp…`) | [`pack-lanternes-mangrove.md`](pack-lanternes-mangrove.md) |
 | `barriere-rompue` — *Ambohijanaka des Enclos* | Grandma Clo (`EMuO6fFL…`) | [`pack-barriere-rompue.md`](pack-barriere-rompue.md) |
+| `lac-jarres-blanches` — *Ankareno* | Grandpa Oxley (`0dPqNXnh…`) | [`pack-lac-jarres-blanches.md`](pack-lac-jarres-blanches.md) |
+
+Il reste une légende sans voix : `pierres-laterite`. Sa propre note de mise en scène
+demande une diction sèche et tranchante — c'est la voix qu'il faut lui trouver, pas
+une de celles-ci.
 
 Un pack se compose de deux familles, parce qu'on les retrouve de deux façons :
 
@@ -138,10 +143,22 @@ Deux règles absolues :
    pas et n'obtient donc aucun pack : lire de la prose enregistrée par-dessus une
    autre histoire serait pire que de ne rien lire.
 
-La direction de jeu (`[solemn]`, `[whispers]`, `[dramatically]`) est appliquée **à la
-génération** selon le rôle de la ligne, pas écrite dans le texte : le libellé approuvé
-reste exactement celui qui a été relu, et rediriger tout le pack est une seule
-modification au lieu de 41.
+La direction de jeu est appliquée **à la génération**, jamais écrite dans `text` : une
+balise dans le texte apparié rendrait la ligne muette, et `check:assets` la refuse.
+
+Deux niveaux. Par défaut, une balise unique déduite du rôle de la ligne
+(`[whispers]` la nuit, `[solemn]` à l'aube, `[dramatically]` au vote) — suffisant pour
+une phrase, trop grossier pour une légende qui doit chuchoter, basculer, puis se poser.
+Une ligne peut donc porter sa propre `direction` : la même phrase, balisée finement,
+utilisée pour la seule synthèse. `check:assets` compare les deux **mot à mot** — seules
+les balises et la ponctuation peuvent différer.
+
+Deux règles, apprises au banc d'essai et tenues par le build :
+
+- **Aucune balise non-verbale.** `[sighs]`, `[laughs]` ne sont pas interprétés, ils sont
+  *joués* : on entend un soupir plaqué au milieu de la phrase.
+- **La direction descend vers la fin d'une partie.** Une victoire ouverte sur
+  `[dramatically]` relance le récit ; terminée sur `[slowly]`, elle le referme.
 
 ## Voix off : statique vs dynamique
 
@@ -175,7 +192,8 @@ bun run check:assets
 - ✅ **14 bruitages** générés (`sfx_*.mp3`)
 - ✅ **11 voix off** statiques générées (`vo_*.mp3`)
 - ✅ **13 ambiances de phase** composées, refermées en boucle par ffmpeg
-- ✅ **2 packs de narration** — 41 lignes chacun, 4,8 min et 5,9 min
+- ✅ **3 packs de narration** — Lanternes 41 lignes / 4,8 min, Barrière 41 / 5,9 min,
+  Lac 37 / 6,4 min (le plus lent, et le seul dirigé ligne par ligne)
 
 Une clé d'ambiance sans fichier retombe sur un placeholder via la chaîne de repli de
 `src/audio/manifest.ts` — déposer `nuit_songomby.mp3` suffit à le remplacer, sans

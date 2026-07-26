@@ -397,7 +397,11 @@ async function scRemoteAudio() {
 }
 
 /** File prefix each recorded pack was produced under — see src/audio/packs/. */
-const PACK_PREFIX = { "lanternes-mangrove": "vo_lm_", "barriere-rompue": "vo_br_" };
+const PACK_PREFIX = {
+  "lanternes-mangrove": "vo_lm_",
+  "barriere-rompue": "vo_br_",
+  "lac-jarres-blanches": "vo_lj_",
+};
 
 /**
  * Recorded narration pack. The real risk is not "does a file exist" — check:assets

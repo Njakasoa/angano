@@ -1,6 +1,7 @@
 import type { PackLine } from "./line.ts";
 import { PACK_ID as LM_ID, PROSE as LM_PROSE, CUES as LM_CUES } from "./lanternes-mangrove.ts";
 import { PACK_ID as BR_ID, PROSE as BR_PROSE, CUES as BR_CUES } from "./barriere-rompue.ts";
+import { PACK_ID as LJ_ID, PROSE as LJ_PROSE, CUES as LJ_CUES } from "./lac-jarres-blanches.ts";
 
 /**
  * Recorded narration packs, selected by the `storyId` the server sends.
@@ -37,6 +38,7 @@ const build = (id: string, prose: PackLine[], cues: PackLine[]): StoryPack => ({
 const PACKS: Record<string, StoryPack> = {
   [LM_ID]: build(LM_ID, LM_PROSE, LM_CUES),
   [BR_ID]: build(BR_ID, BR_PROSE, BR_CUES),
+  [LJ_ID]: build(LJ_ID, LJ_PROSE, LJ_CUES),
 };
 
 export function packFor(storyId: string | undefined): StoryPack | null {

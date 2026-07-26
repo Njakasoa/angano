@@ -69,13 +69,29 @@ async function main() {
   // A pack line is played by file name off a text match, so a missing file is silent
   // narration at a dramatic beat. And a recording cannot interpolate, so a stray
   // placeholder means a line that would be spoken literally as "{victim}".
-  // Two packs share one audio directory, so a copy-pasted file prefix would have one
+  // Packs share one audio directory, so a copy-pasted file prefix would have one
   // legend quietly playing the other's lines: collisions are an error too.
+  //
+  // A `direction` is what actually gets synthesised, while `text` is what the browser
+  // matches on — so the two must say the same words. Drift there is invisible at every
+  // other layer: the file exists, the match succeeds, and the voice says something
+  // else. Tags and punctuation may differ; nothing else may.
+  const words = (t: string) =>
+    t.replace(/\[[^\]]*\]/g, " ").toLowerCase()
+     .replace(/[’‘]/g, "'").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  /** eleven_v3 *performs* these rather than interpreting them — audibly, and badly. */
+  const NON_VERBAL = /\[(sighs?|laughs?|gasps?|coughs?|clears throat|breathes?)\]/i;
+
   const seen = new Map<string, string>();
   for (const pack of PACKS) {
     for (const line of pack.lines) {
       if (!(await exists(AUDIO + line.file))) errors.push(`pack "${pack.id}" — ${line.file} absent (${line.label})`);
       if (/\{[a-zA-Z_]+\}/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} contient un placeholder, impossible à enregistrer`);
+      if (/\[[^\]]*\]/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} : une balise dans "text" ferait échouer l'appariement`);
+      if (line.direction) {
+        if (words(line.direction) !== words(line.text)) errors.push(`pack "${pack.id}" — ${line.label} : la direction ne dit pas le même texte`);
+        if (NON_VERBAL.test(line.direction)) errors.push(`pack "${pack.id}" — ${line.label} : balise non-verbale, jouée littéralement`);
+      }
       const owner = seen.get(line.file);
       if (owner) errors.push(`pack "${pack.id}" — ${line.file} déjà utilisé par "${owner}"`);
       else seen.set(line.file, pack.id);

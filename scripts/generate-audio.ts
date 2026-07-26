@@ -141,11 +141,12 @@ async function seamlessLoop(bytes: Uint8Array): Promise<Uint8Array> {
 }
 
 /**
- * Performance direction for a pack line, as an eleven_v3 audio tag.
+ * Fallback performance direction, derived from the line's role.
  *
- * Applied at generation time from the line's role rather than baked into the text:
- * the approved wording in the pack stays exactly what was reviewed, and re-directing
- * the whole pack is one edit here instead of 41.
+ * Applied at generation time rather than baked into the text: the approved wording in
+ * the pack stays exactly what was reviewed, and re-directing a whole pack is one edit
+ * here instead of forty. A line that carries its own `direction` overrides this —
+ * this can only place one tag at the very front.
  */
 function direction(label: string): string {
   if (/^nuit_|^ambiance_night$/.test(label)) return "[whispers] ";
@@ -217,9 +218,10 @@ async function main() {
           console.error(`  ✗ ${line.label} contient un placeholder — pack refusé`);
           process.exit(1);
         }
+        const spoken = line.direction ?? direction(line.label) + line.text;
         count(await produce(line.label, line.file, () =>
           post(`${BASE}/v1/text-to-speech/${packVoice}?output_format=mp3_44100_128`,
-            { text: direction(line.label) + speakable(line.text), model_id: packModel })));
+            { text: speakable(spoken), model_id: packModel })));
       }
     }
   }

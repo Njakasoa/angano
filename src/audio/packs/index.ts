@@ -1,6 +1,4 @@
 import type { PackLine } from "./line.ts";
-import { PACK_ID as LM_ID, PROSE as LM_PROSE, CUES as LM_CUES } from "./lanternes-mangrove.ts";
-import { PACK_ID as BR_ID, PROSE as BR_PROSE, CUES as BR_CUES } from "./barriere-rompue.ts";
 import { PACK_ID as LJ_ID, PROSE as LJ_PROSE, CUES as LJ_CUES } from "./lac-jarres-blanches.ts";
 
 /**
@@ -34,10 +32,16 @@ const build = (id: string, prose: PackLine[], cues: PackLine[]): StoryPack => ({
   cues: new Map(cues.map((l) => [l.label, l.file])),
 });
 
-/** Each legend gets its own teller — see `docs/direction-sonore.md`. */
+/**
+ * Each legend gets its own teller — see `docs/direction-sonore.md`.
+ *
+ * Only one legend is recorded today. Two others were written, recorded and then
+ * rejected on listening; their text survives in `docs/pack-*.md` and in git, and the
+ * prose is regenerated from core-api's preset by script, so re-recording them is
+ * cheap. A legend with no pack is not a broken state: the browser simply falls back
+ * to the runtime voice, or to text.
+ */
 const PACKS: Record<string, StoryPack> = {
-  [LM_ID]: build(LM_ID, LM_PROSE, LM_CUES),
-  [BR_ID]: build(BR_ID, BR_PROSE, BR_CUES),
   [LJ_ID]: build(LJ_ID, LJ_PROSE, LJ_CUES),
 };
 

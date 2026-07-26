@@ -115,15 +115,21 @@ sont dans `src/audio/packs/`, le texte approuvé dans `docs/pack-*.md`.
 lignes dans `scripts/audio-plan.ts` — pas dans l'environnement : régénérer d'un bloc
 ne peut donc pas réenregistrer une légende avec la voix de l'autre.
 
-| Légende | Conteur | Texte |
-|---|---|---|
-| `lanternes-mangrove` — *Ankivy des Eaux Grises* | voix clonée (`LOF1yccp…`) | [`pack-lanternes-mangrove.md`](pack-lanternes-mangrove.md) |
-| `barriere-rompue` — *Ambohijanaka des Enclos* | Grandma Clo (`EMuO6fFL…`) | [`pack-barriere-rompue.md`](pack-barriere-rompue.md) |
-| `lac-jarres-blanches` — *Ankareno* | Grandpa Oxley (`0dPqNXnh…`) | [`pack-lac-jarres-blanches.md`](pack-lac-jarres-blanches.md) |
+| Légende | Conteur | État | Texte |
+|---|---|---|---|
+| `lac-jarres-blanches` — *Ankareno* | Grandpa Oxley (`0dPqNXnh…`) | **la seule montée** | [`pack-lac-jarres-blanches.md`](pack-lac-jarres-blanches.md) |
+| `lanternes-mangrove` — *Ankivy des Eaux Grises* | voix clonée (`LOF1yccp…`) | enregistrée puis **rejetée à l'écoute** | [`pack-lanternes-mangrove.md`](pack-lanternes-mangrove.md) |
+| `barriere-rompue` — *Ambohijanaka des Enclos* | Grandma Clo (`EMuO6fFL…`) | enregistrée puis **rejetée à l'écoute** | [`pack-barriere-rompue.md`](pack-barriere-rompue.md) |
+| `pierres-laterite` — *Antsahon'ny Vato* | — | jamais écrite | — |
 
-Il reste une légende sans voix : `pierres-laterite`. Sa propre note de mise en scène
-demande une diction sèche et tranchante — c'est la voix qu'il faut lui trouver, pas
-une de celles-ci.
+Les deux packs rejetés ne sont plus câblés : leurs modules sont sortis du registre, et
+une légende sans pack n'est **pas** un état cassé — le navigateur retombe sur la voix
+runtime, ou sur le texte. Leur texte approuvé reste dans les `docs/pack-*.md` et dans
+git, et la prose se régénère depuis le préréglage de core-api par script : les
+réenregistrer coûte une commande, pas une réécriture.
+
+`pierres-laterite` demande une diction sèche et tranchante — c'est une quatrième voix
+à trouver, pas une de celles-ci.
 
 Un pack se compose de deux familles, parce qu'on les retrouve de deux façons :
 
@@ -189,11 +195,16 @@ bun run check:assets
 ```
 
 ### État
-- ✅ **14 bruitages** générés (`sfx_*.mp3`)
-- ✅ **11 voix off** statiques générées (`vo_*.mp3`)
+
+`bun run doc:audio` régénère l'inventaire complet dans
+[`audio-a-generer.md`](audio-a-generer.md) : chaque fichier attendu, sa taille, sa
+durée, et la commande exacte qui le refait. C'est la table à consulter après une
+séance d'écoute.
+
+- ⚠️ **8 bruitages sur 14** — 6 rejetés à l'écoute, à refaire
+- ⚠️ **0 voix off statique sur 11** — toutes rejetées, à refaire
 - ✅ **13 ambiances de phase** composées, refermées en boucle par ffmpeg
-- ✅ **3 packs de narration** — Lanternes 41 lignes / 4,8 min, Barrière 41 / 5,9 min,
-  Lac 37 / 6,4 min (le plus lent, et le seul dirigé ligne par ligne)
+- ⚠️ **1 pack sur 4 légendes** — le Lac, 26 lignes gardées sur 37
 
 Une clé d'ambiance sans fichier retombe sur un placeholder via la chaîne de repli de
 `src/audio/manifest.ts` — déposer `nuit_songomby.mp3` suffit à le remplacer, sans

@@ -6,8 +6,6 @@
  * renamed key cannot silently leave the game mute.
  */
 import type { PackLine } from "../src/audio/packs/line.ts";
-import { ALL as LANTERNES, PACK_ID as LANTERNES_ID } from "../src/audio/packs/lanternes-mangrove.ts";
-import { ALL as BARRIERE, PACK_ID as BARRIERE_ID } from "../src/audio/packs/barriere-rompue.ts";
 import { ALL as LAC, PACK_ID as LAC_ID } from "../src/audio/packs/lac-jarres-blanches.ts";
 
 /** Shared style bed, so the whole soundtrack reads as one world. */
@@ -100,7 +98,5 @@ export const AMBIANCE: AmbianceSpec[] = [
  */
 export interface PackSpec { id: string; voice: string; lines: PackLine[] }
 export const PACKS: PackSpec[] = [
-  { id: LANTERNES_ID, voice: "LOF1yccpEMqzvhfbLTGh", lines: LANTERNES },   // Njaka (voix clonée)
-  { id: BARRIERE_ID, voice: "EMuO6fFLrXKOryHzij6K", lines: BARRIERE },     // Grandma Clo – Warm Storyteller
   { id: LAC_ID, voice: "0dPqNXnhg2bmxQv1WKDp", lines: LAC },               // Grandpa Storyteller Oxley
 ];

@@ -66,11 +66,10 @@ async function main() {
   }
 
   // ── recorded narration packs ──
-  // A pack line is played by file name off a text match, so a missing file is silent
-  // narration at a dramatic beat. And a recording cannot interpolate, so a stray
-  // placeholder means a line that would be spoken literally as "{victim}".
-  // Packs share one audio directory, so a copy-pasted file prefix would have one
-  // legend quietly playing the other's lines: collisions are an error too.
+  // A recording cannot interpolate, so a stray placeholder means a line that would be
+  // spoken literally as "{victim}". Packs share one audio directory, so a copy-pasted
+  // file prefix would have one legend quietly playing the other's lines: collisions
+  // are an error too.
   //
   // A `direction` is what actually gets synthesised, while `text` is what the browser
   // matches on — so the two must say the same words. Drift there is invisible at every
@@ -84,8 +83,15 @@ async function main() {
 
   const seen = new Map<string, string>();
   for (const pack of PACKS) {
+    // A line with no file is *not* broken: `proseFile` returns nothing and the browser
+    // falls back to the runtime voice, or to text. It is a production gap, and the
+    // triage loop — listen, delete what does not work, re-record — lives entirely in
+    // that gap, so it must not stop a build. A pack with *nothing* recorded is a
+    // different animal: that means the id is wrong, and no line will ever be found.
+    let recorded = 0;
     for (const line of pack.lines) {
-      if (!(await exists(AUDIO + line.file))) errors.push(`pack "${pack.id}" — ${line.file} absent (${line.label})`);
+      if (await exists(AUDIO + line.file)) recorded++;
+      else warnings.push(`pack "${pack.id}" — ${line.file} à générer (${line.label})`);
       if (/\{[a-zA-Z_]+\}/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} contient un placeholder, impossible à enregistrer`);
       if (/\[[^\]]*\]/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} : une balise dans "text" ferait échouer l'appariement`);
       if (line.direction) {
@@ -96,6 +102,7 @@ async function main() {
       if (owner) errors.push(`pack "${pack.id}" — ${line.file} déjà utilisé par "${owner}"`);
       else seen.set(line.file, pack.id);
     }
+    if (!recorded) errors.push(`pack "${pack.id}" — aucune ligne enregistrée : l'id ne correspond à rien de produit`);
   }
 
   for (const w of warnings) console.warn(`⚠️  ${w}`);

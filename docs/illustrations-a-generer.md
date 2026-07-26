@@ -4,6 +4,17 @@
 > changements de rôles. Prompts auto-suffisants (copier-coller direct dans Higgsfield).
 > Formats : **portraits = 1:1 (1024×1024)**, **pouvoirs = 3:2 (1536×1024)**. Sortie PNG.
 
+> ✅ **Tout est produit.** `check:assets` ne signale plus aucun visuel manquant. Les
+> prompts restent ici : ils sont la trace de ce qui a été peint, et le point de départ
+> d'une reprise. Deux remarques apprises en peignant les cinq derniers :
+>
+> - Passer **deux ou trois bannières déjà livrées en références de style** vaut mieux
+>   que de répéter la bible en texte. Sans elles, le générateur dérive vers une savane
+>   générique — cases rondes en chaume, masques — que la bible interdit pourtant noir
+>   sur blanc.
+> - Nommer les hautes terres **explicitement** dans chaque prompt (maisons de latérite
+>   à toit pentu, rizières en terrasses, zébu, lamba), et nier ce qu'on ne veut pas.
+
 ---
 
 ## Priorité P1

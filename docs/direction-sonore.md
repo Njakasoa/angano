@@ -131,6 +131,22 @@ déjà publique, dans `phase`, avant qu'aucun son ne joue. Une seule exception t
 côté serveur : la Marque du Fanany passe par le même gestionnaire d'action mais en
 plein jour, et reste muette — son secret est toute la mécanique.
 
+### Comparer plusieurs prises
+
+Aucun endpoint ElevenLabs ne renvoie plusieurs résultats par requête — ni
+`/v1/sound-generation` (pas de `n`, pas de `seed`), ni `/v1/music`, ni la synthèse
+vocale. Quatre variantes = quatre requêtes, facturées quatre fois.
+
+C'est le bon compromis pour du sound design, où le prompt est une hypothèse et la
+deuxième prise est souvent la bonne — mais pas quelque chose à faire en silence.
+D'où `--variants=<n>` : les prises vont dans `audition/variantes/` (gitignoré),
+`public/` n'est jamais touché, et le script imprime le `cp` qui garde la bonne.
+
+Les lits foley sont générés avec `loop: true` : `eleven_text_to_sound_v2` referme la
+boucle lui-même. Les lits **musicaux** passent toujours par le crossfade ffmpeg — le
+compositeur n'a pas cette option — et y perdent trois secondes de matière à chaque
+fois.
+
 ## Packs de narration enregistrés
 
 L'expérience par défaut : une légende fixe, entièrement pré-enregistrée. Les données
@@ -213,7 +229,10 @@ ELEVENLABS_API_KEY=sk_... bun run gen:audio
 ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts --voice --force
 
 # une seule légende — `--force` sur `--pack` seul réenregistrerait tous les packs
-ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts --pack=barriere-rompue
+ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts --pack=lac-jarres-blanches
+
+# quatre prises de chaque son, dans audition/variantes/ — public/ n'est pas touché
+ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts --foley --variants=4
 
 # vérifier qu'aucun asset référencé ne manque (lancé aussi par `bun run build`)
 bun run check:assets

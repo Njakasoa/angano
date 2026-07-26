@@ -113,6 +113,10 @@ export const PACKS: PackSpec[] = [
  * They sit in front of the composed beds in the manifest chain rather than replacing
  * them: an unproduced foley bed falls back to its music, so the option ships before
  * the audio does. Only the seven night turns get one; the day keeps its score.
+ *
+ * Generated with `loop: true` — `eleven_text_to_sound_v2` closes the loop itself, so
+ * these skip the ffmpeg crossfade the composed beds need. That crossfade costs three
+ * seconds of material every time; a native loop costs none.
  */
 export const FOLEY_STYLE =
   "field-recorded natural ambience, no music, no instruments, no melody, no vocals, no speech. " +
@@ -120,13 +124,13 @@ export const FOLEY_STYLE =
   "Seamless looping bed — constant intensity, no build, no fade, no ending";
 
 export const FOLEY: AmbianceSpec[] = [
-  { key: "nuit_zazavavindrano_foley", file: "nuit_zazavavindrano_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A still river under the moon: slow water lapping at reeds, a faint deep swirl below the surface, dripping, wet stone.` },
-  { key: "nuit_mpamosavy_foley", file: "nuit_mpamosavy_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A sorcerer's fire: embers ticking and breathing, fine ash falling, dry bones and beads shifting, an occasional low exhale of air over coals.` },
-  { key: "nuit_mpisikidy_foley", file: "nuit_mpisikidy_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A diviner's mat: seeds shifting in a wooden bowl, a woven mat creaking, thin smoke, a very soft slow breath.` },
-  { key: "nuit_kalanoro_foley", file: "nuit_kalanoro_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. The forest floor at night: wet earth, dripping leaves, a small creature moving through undergrowth then stopping, crickets thinning out.` },
-  { key: "nuit_kinoly_foley", file: "nuit_kinoly_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. Underground stillness: muffled air inside stone tombs, a very distant slow breathing, faint grit falling, almost silence.` },
-  { key: "nuit_songomby_foley", file: "nuit_songomby_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. Reeds in a rice paddy: a heavy animal breathing low and close, wet hooves in mud, reeds pushed aside, water disturbed.` },
-  { key: "nuit_ombiasy_foley", file: "nuit_ombiasy_foley.mp3", seconds: 20, prompt: `${FOLEY_STYLE}. A healer's hut: amulets and beads clicking softly, a glass vial set down on wood, dried plants rustling, warm coals nearby.` },
+  { key: "nuit_zazavavindrano_foley", file: "nuit_zazavavindrano_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. A still river under the moon: slow water lapping at reeds, a faint deep swirl below the surface, dripping, wet stone.` },
+  { key: "nuit_mpamosavy_foley", file: "nuit_mpamosavy_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. A sorcerer's fire: embers ticking and breathing, fine ash falling, dry bones and beads shifting, an occasional low exhale of air over coals.` },
+  { key: "nuit_mpisikidy_foley", file: "nuit_mpisikidy_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. A diviner's mat: seeds shifting in a wooden bowl, a woven mat creaking, thin smoke, a very soft slow breath.` },
+  { key: "nuit_kalanoro_foley", file: "nuit_kalanoro_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. The forest floor at night: wet earth, dripping leaves, a small creature moving through undergrowth then stopping, crickets thinning out.` },
+  { key: "nuit_kinoly_foley", file: "nuit_kinoly_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. Underground stillness: muffled air inside stone tombs, a very distant slow breathing, faint grit falling, almost silence.` },
+  { key: "nuit_songomby_foley", file: "nuit_songomby_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. Reeds in a rice paddy: a heavy animal breathing low and close, wet hooves in mud, reeds pushed aside, water disturbed.` },
+  { key: "nuit_ombiasy_foley", file: "nuit_ombiasy_foley.mp3", seconds: 30, prompt: `${FOLEY_STYLE}. A healer's hut: amulets and beads clicking softly, a glass vial set down on wood, dried plants rustling, warm coals nearby.` },
 ];
 
 /**

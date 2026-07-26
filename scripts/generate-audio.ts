@@ -3,6 +3,7 @@
  *
  *   ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts [--sfx] [--voice]
  *                        [--ambiance] [--foley] [--pack[=<id>]] [--force]
+ *                        [--variants=<n>]
  *
  * Default (no flag) produces sfx + voice: the two families that map cleanly onto
  * what the API does well. Ambiance is opt-in — see the note in audio-plan.ts.
@@ -55,6 +56,18 @@ const want = picked.length ? new Set(picked) : new Set(["--sfx", "--voice"]);
 /** `--pack=barriere-rompue` narrows to one legend — a `--force` re-record of every
  *  pack is otherwise a large, and entirely avoidable, bill. */
 const onlyPack = argv.find((a) => a.startsWith("--pack="))?.slice("--pack=".length);
+/**
+ * `--variants=4` — take N runs at the same prompt and drop them in `audition/`
+ * instead of shipping one.
+ *
+ * No ElevenLabs endpoint returns several results per request: sound-generation has
+ * no `n`, and no seed either, so the only way to compare takes is to ask N times and
+ * pay N times. Which is exactly right for sound design — the prompt is a guess, and
+ * the second take is often the good one — and exactly wrong to do silently, so it is
+ * opt-in and never overwrites what is already shipping.
+ */
+const variants = Math.max(0, Number(argv.find((a) => a.startsWith("--variants="))?.slice("--variants=".length) ?? 0) || 0);
+const AUDITION = new URL("../audition/variantes/", import.meta.url).pathname;
 
 /**
  * Mirrors core-api's `pronunciation.ts`. Duplicated rather than shared because the
@@ -156,12 +169,33 @@ function direction(label: string): string {
 }
 
 async function produce(label: string, file: string, make: () => Promise<Uint8Array | null>) {
+  if (variants) return takes(label, file, make);
   const path = OUT + file;
   if (!force && (await exists(path))) { console.log(`  ⏭  ${file} (déjà présent)`); return "skipped" as const; }
   const bytes = await make();
   if (!bytes) return "failed" as const;
   await writeFile(path, bytes);
   console.log(`  ✓ ${file} — ${(bytes.byteLength / 1024).toFixed(0)} Ko  · ${label}`);
+  return "written" as const;
+}
+
+/**
+ * N takes of the same sound, into `audition/variantes/`, leaving `public/` alone.
+ * Keeping one is a `cp` — printed, because guessing which take won is not the
+ * script's job.
+ */
+async function takes(label: string, file: string, make: () => Promise<Uint8Array | null>) {
+  const stem = file.replace(/\.mp3$/, "");
+  let written = 0;
+  for (let i = 1; i <= variants; i++) {
+    const bytes = await make();
+    if (!bytes) continue;
+    await writeFile(`${AUDITION}${stem}.v${i}.mp3`, bytes);
+    written++;
+  }
+  if (!written) return "failed" as const;
+  console.log(`  ✓ ${stem} — ${written} prises · ${label}`);
+  console.log(`      cp audition/variantes/${stem}.v<n>.mp3 public/assets/audio/${file}`);
   return "written" as const;
 }
 
@@ -172,6 +206,7 @@ async function main() {
     process.exit(1);
   }
   await mkdir(OUT, { recursive: true });
+  if (variants) await mkdir(AUDITION, { recursive: true });
   const tally = { written: 0, skipped: 0, failed: 0 };
   const count = (r: "written" | "skipped" | "failed") => { tally[r]++; };
 
@@ -198,12 +233,13 @@ async function main() {
   if (want.has("--foley")) {
     // Foley, not music: these go through the sound model, which caps far below the
     // composer's length — hence 20 s beds, closed into a loop the same way.
-    console.log(`\n🌙 Lits foley (${FOLEY.length}) — enregistrés puis refermés en boucle`);
+    console.log(`\n🌙 Lits foley (${FOLEY.length}) — bouclés nativement par le modèle`);
     for (const f of FOLEY) {
-      count(await produce(f.key, f.file, async () => {
-        const raw = await post(`${BASE}/v1/sound-generation`, { text: f.prompt, duration_seconds: f.seconds, prompt_influence: 0.5 });
-        return raw ? await seamlessLoop(raw) : null;
-      }));
+      // `loop: true` has eleven_text_to_sound_v2 close the loop itself, so these skip
+      // the ffmpeg crossfade — which would eat three seconds of a thirty-second bed.
+      count(await produce(f.key, f.file, () =>
+        post(`${BASE}/v1/sound-generation`,
+          { text: f.prompt, duration_seconds: f.seconds, prompt_influence: 0.5, loop: true })));
     }
   }
 

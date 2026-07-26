@@ -15,9 +15,9 @@
  * generator refuses to build the pack if one appears.
  */
 
-export const PACK_ID = "lanternes-mangrove";
+import type { PackLine } from "./line.ts";
 
-export interface PackLine { file: string; label: string; text: string }
+export const PACK_ID = "lanternes-mangrove";
 
 /** The legend's own prose — matched against what the server sends. */
 export const PROSE: PackLine[] = [

@@ -393,15 +393,29 @@ async function scRemoteAudio() {
   await teardown();
 }
 
+/** File prefix each recorded pack was produced under — see src/audio/packs/. */
+const PACK_PREFIX = { "lanternes-mangrove": "vo_lm_", "barriere-rompue": "vo_br_" };
+
 /**
  * Recorded narration pack. The real risk is not "does a file exist" — check:assets
  * covers that — but whether the text the server sends still MATCHES the text the
  * pack was recorded from. One reworded preset line and the legend goes silent with
- * nothing in the console. Requires ANGANO_STORY_PRESET=lanternes-mangrove.
+ * nothing in the console.
+ *
+ * Set ANGANO_STORY_PRESET on the *server* to pick which legend is told, and the same
+ * value here so the scenario knows which files to listen for; both packs are covered
+ * by running the suite twice.
  */
 async function scPack() {
+  const preset = process.env.ANGANO_STORY_PRESET?.trim() || "lanternes-mangrove";
+  const prefix = PACK_PREFIX[preset];
+  if (!prefix) {
+    console.log(`⏭  pack — « ${preset} » n'a pas de pack enregistré, rien à vérifier`);
+    return;
+  }
+  console.log(`   (légende : ${preset} → ${prefix}*)`);
   const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"], theme: true });
-  const heard = () => [...g.players, g.host].flatMap((p) => p.assets).filter((f) => f.startsWith("vo_lm_"));
+  const heard = () => [...g.players, g.host].flatMap((p) => p.assets).filter((f) => f.startsWith(prefix));
 
   await sleep(2500);
   const prose = heard().filter((f) => f.includes("_prose_"));
@@ -411,12 +425,12 @@ async function scPack() {
   const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
   ok("Partie menée à son terme", !!r.winner, `winner=${r.winner}`);
 
-  const cues = heard().filter((f) => /vo_lm_(aube|reveal|vote|razana)_/.test(f));
+  const cues = heard().filter((f) => /_(aube|reveal|vote|razana)_/.test(f));
   ok("Les répliques d'événement sont jouées", cues.length > 0, [...new Set(cues)].slice(0, 4).join(", "));
 
   // Each cue family hangs off a different event, so one firing proves nothing about
   // the others: check the mapping reached dawn, a role reveal AND a verdict.
-  const families = new Set(cues.map((f) => f.replace(/^vo_lm_/, "").split("_")[0]));
+  const families = new Set(cues.map((f) => f.slice(prefix.length).split("_")[0]));
   ok("Les trois familles de répliques se déclenchent", families.has("aube") && families.has("reveal") && families.has("vote"),
     [...families].join(", "));
   await teardown();

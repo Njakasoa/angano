@@ -108,9 +108,17 @@ un rôle, penser aux deux fichiers.
 
 ## Packs de narration enregistrés
 
-L'expérience par défaut : une légende fixe, entièrement pré-enregistrée. Voir
-`docs/pack-lanternes-mangrove.md` pour le texte approuvé et
-`src/audio/packs/` pour les données.
+L'expérience par défaut : une légende fixe, entièrement pré-enregistrée. Les données
+sont dans `src/audio/packs/`, le texte approuvé dans `docs/pack-*.md`.
+
+**Une légende, un conteur.** Le pack porte sa propre voix, déclarée à côté de ses
+lignes dans `scripts/audio-plan.ts` — pas dans l'environnement : régénérer d'un bloc
+ne peut donc pas réenregistrer une légende avec la voix de l'autre.
+
+| Légende | Conteur | Texte |
+|---|---|---|
+| `lanternes-mangrove` — *Ankivy des Eaux Grises* | voix clonée (`LOF1yccp…`) | [`pack-lanternes-mangrove.md`](pack-lanternes-mangrove.md) |
+| `barriere-rompue` — *Ambohijanaka des Enclos* | Grandma Clo (`EMuO6fFL…`) | [`pack-barriere-rompue.md`](pack-barriere-rompue.md) |
 
 Un pack se compose de deux familles, parce qu'on les retrouve de deux façons :
 
@@ -156,6 +164,9 @@ ELEVENLABS_API_KEY=sk_... bun run gen:audio
 # une seule catégorie / tout régénérer
 ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts --voice --force
 
+# une seule légende — `--force` sur `--pack` seul réenregistrerait tous les packs
+ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts --pack=barriere-rompue
+
 # vérifier qu'aucun asset référencé ne manque (lancé aussi par `bun run build`)
 bun run check:assets
 ```
@@ -163,12 +174,11 @@ bun run check:assets
 ### État
 - ✅ **14 bruitages** générés (`sfx_*.mp3`)
 - ✅ **11 voix off** statiques générées (`vo_*.mp3`)
-- ⏳ **13 ambiances de phase** — *non générées*. Disponibles via `--ambiance`, mais
-  l'API plafonne à 22 s et les boucles ne raccordent pas proprement ; les ambiances
-  recyclées actuelles sonnent probablement mieux. **À écouter avant de committer.**
+- ✅ **13 ambiances de phase** composées, refermées en boucle par ffmpeg
+- ✅ **2 packs de narration** — 41 lignes chacun, 4,8 min et 5,9 min
 
-En attendant, chaque clé d'ambiance retombe sur un placeholder via la chaîne de repli
-de `src/audio/manifest.ts` — déposer `nuit_songomby.mp3` suffit à le remplacer, sans
+Une clé d'ambiance sans fichier retombe sur un placeholder via la chaîne de repli de
+`src/audio/manifest.ts` — déposer `nuit_songomby.mp3` suffit à le remplacer, sans
 toucher au code.
 
 ## Garde-fous

@@ -5,6 +5,10 @@
  * Keys must match `src/audio/manifest.ts`; `check-assets.ts` enforces that, so a
  * renamed key cannot silently leave the game mute.
  */
+import type { PackLine } from "../src/audio/packs/line.ts";
+import { ALL as LANTERNES, PACK_ID as LANTERNES_ID } from "../src/audio/packs/lanternes-mangrove.ts";
+import { ALL as BARRIERE, PACK_ID as BARRIERE_ID } from "../src/audio/packs/barriere-rompue.ts";
+
 
 /** Shared style bed, so the whole soundtrack reads as one world. */
 export const SFX_STYLE =
@@ -85,4 +89,17 @@ export const AMBIANCE: AmbianceSpec[] = [
   { key: "debat", file: "debat.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the village assembly — restless mid-tempo zither ostinato, murmuring low percussion, suspicion tightening.` },
   { key: "vote", file: "vote.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: judgement approaching — slow relentless drum pulse, rising tension, a held unresolved chord.` },
   { key: "revelation", file: "revelation.mp3", seconds: 30, prompt: `${MUSIC_STYLE}. Mood: the truth laid bare — a long resonant gong-like decay, ancestral low strings, solemn and final.` },
+];
+
+/**
+ * Recorded narration packs and the voice that tells each one.
+ *
+ * One legend, one teller: the voice is a property of the pack, not of the run, so
+ * regenerating everything cannot accidentally re-record one legend in the other's
+ * voice. The ids are ElevenLabs voice ids — public identifiers, not secrets.
+ */
+export interface PackSpec { id: string; voice: string; lines: PackLine[] }
+export const PACKS: PackSpec[] = [
+  { id: LANTERNES_ID, voice: "LOF1yccpEMqzvhfbLTGh", lines: LANTERNES },   // Njaka (voix clonée)
+  { id: BARRIERE_ID, voice: "EMuO6fFLrXKOryHzij6K", lines: BARRIERE },     // Grandma Clo – Warm Storyteller
 ];

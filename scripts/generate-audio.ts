@@ -13,8 +13,7 @@
  * stub behind that the fallback chain would then happily "resolve".
  */
 import { mkdir, writeFile, access, unlink } from "node:fs/promises";
-import { AMBIANCE, SFX, VOICE } from "./audio-plan.ts";
-import { ALL as PACK_LINES, PACK_ID } from "../src/audio/packs/lanternes-mangrove.ts";
+import { AMBIANCE, PACKS, SFX, VOICE } from "./audio-plan.ts";
 
 const KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_NARRATOR ?? "qCDtdqQv5bdcrgWED5k8"; // Arthur Martin (fr)
@@ -46,10 +45,14 @@ function voiceSettings(): Record<string, number> | undefined {
 }
 const SETTINGS = voiceSettings();
 
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv.map((a) => a.split("=")[0]!));
 const force = args.has("--force");
 const picked = ["--sfx", "--voice", "--ambiance", "--pack"].filter((f) => args.has(f));
 const want = picked.length ? new Set(picked) : new Set(["--sfx", "--voice"]);
+/** `--pack=barriere-rompue` narrows to one legend — a `--force` re-record of every
+ *  pack is otherwise a large, and entirely avoidable, bill. */
+const onlyPack = argv.find((a) => a.startsWith("--pack="))?.slice("--pack=".length);
 
 /**
  * Mirrors core-api's `pronunciation.ts`. Duplicated rather than shared because the
@@ -197,17 +200,25 @@ async function main() {
   }
 
   if (want.has("--pack")) {
-    const packVoice = process.env.ELEVENLABS_PACK_VOICE ?? VOICE_ID;
     const packModel = process.env.ELEVENLABS_PACK_MODEL ?? "eleven_v3";
-    console.log(`\n📖 Pack « ${PACK_ID} » (${PACK_LINES.length} lignes) — ${packModel} · voix ${packVoice}`);
-    for (const line of PACK_LINES) {
-      if (/\{[a-zA-Z_]+\}/.test(line.text)) {   // a recording cannot interpolate
-        console.error(`  ✗ ${line.label} contient un placeholder — pack refusé`);
-        process.exit(1);
+    const packs = onlyPack ? PACKS.filter((p) => p.id === onlyPack) : PACKS;
+    if (onlyPack && !packs.length) {
+      console.error(`Pack inconnu « ${onlyPack} » — connus : ${PACKS.map((p) => p.id).join(", ")}`);
+      process.exit(1);
+    }
+    for (const pack of packs) {
+      // The voice belongs to the pack, not to the run: one legend, one teller.
+      const packVoice = process.env.ELEVENLABS_PACK_VOICE ?? pack.voice;
+      console.log(`\n📖 Pack « ${pack.id} » (${pack.lines.length} lignes) — ${packModel} · voix ${packVoice}`);
+      for (const line of pack.lines) {
+        if (/\{[a-zA-Z_]+\}/.test(line.text)) {   // a recording cannot interpolate
+          console.error(`  ✗ ${line.label} contient un placeholder — pack refusé`);
+          process.exit(1);
+        }
+        count(await produce(line.label, line.file, () =>
+          post(`${BASE}/v1/text-to-speech/${packVoice}?output_format=mp3_44100_128`,
+            { text: direction(line.label) + speakable(line.text), model_id: packModel })));
       }
-      count(await produce(line.label, line.file, () =>
-        post(`${BASE}/v1/text-to-speech/${packVoice}?output_format=mp3_44100_128`,
-          { text: direction(line.label) + speakable(line.text), model_id: packModel })));
     }
   }
 

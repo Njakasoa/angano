@@ -16,7 +16,7 @@
 import { access } from "node:fs/promises";
 import { MUSIC, SFX, VOICE } from "../src/audio/manifest.ts";
 import { ROLES } from "../src/core/roles.ts";
-import { ALL as PACK_LINES, PACK_ID } from "../src/audio/packs/lanternes-mangrove.ts";
+import { PACKS } from "./audio-plan.ts";
 
 const AUDIO = new URL("../public/assets/audio/", import.meta.url).pathname;
 const IMAGES = new URL("../public/assets/images/", import.meta.url).pathname;
@@ -69,9 +69,17 @@ async function main() {
   // A pack line is played by file name off a text match, so a missing file is silent
   // narration at a dramatic beat. And a recording cannot interpolate, so a stray
   // placeholder means a line that would be spoken literally as "{victim}".
-  for (const line of PACK_LINES) {
-    if (!(await exists(AUDIO + line.file))) errors.push(`pack "${PACK_ID}" — ${line.file} absent (${line.label})`);
-    if (/\{[a-zA-Z_]+\}/.test(line.text)) errors.push(`pack "${PACK_ID}" — ${line.label} contient un placeholder, impossible à enregistrer`);
+  // Two packs share one audio directory, so a copy-pasted file prefix would have one
+  // legend quietly playing the other's lines: collisions are an error too.
+  const seen = new Map<string, string>();
+  for (const pack of PACKS) {
+    for (const line of pack.lines) {
+      if (!(await exists(AUDIO + line.file))) errors.push(`pack "${pack.id}" — ${line.file} absent (${line.label})`);
+      if (/\{[a-zA-Z_]+\}/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} contient un placeholder, impossible à enregistrer`);
+      const owner = seen.get(line.file);
+      if (owner) errors.push(`pack "${pack.id}" — ${line.file} déjà utilisé par "${owner}"`);
+      else seen.set(line.file, pack.id);
+    }
   }
 
   for (const w of warnings) console.warn(`⚠️  ${w}`);

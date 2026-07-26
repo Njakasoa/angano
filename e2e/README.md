@@ -49,7 +49,7 @@ URLs surchargeables : `ANGANO_API` (défaut `http://localhost:3000`), `ANGANO_UR
 ## Scénarios navigateur couverts (`scenarios.mjs`)
 Victoire **Village**, victoire **Songomby** (parité), **Marque funeste du Fanany**, **soin** de l'Ombiasy,
 **demande de validation de mission**, **reconnexion** (rechargement de page → retour en partie),
-**rematch** (2 parties), **morts annoncées par le narrateur**, **mode salon** (rythme narrateur + retour arrière + un seul haut-parleur, avec son contrôle à distance), **pack de narration** (`ANGANO_STORY_PRESET=lanternes-mangrove` requis), et **assets** (galerie des pouvoirs du
+**rematch** (2 parties), **morts annoncées par le narrateur**, **mode salon** (rythme narrateur + retour arrière + un seul haut-parleur, avec son contrôle à distance), **pack de narration** (même `ANGANO_STORY_PRESET` côté serveur et côté suite — `lanternes-mangrove` ou `barriere-rompue` ; une autre valeur saute proprement le scénario), et **assets** (galerie des pouvoirs du
 codex + aucune image en 404 sur une partie complète — l'art est adressé par une clé venue du serveur,
 donc une clé morte ne se voit qu'à l'écran, jamais dans la console).
 Chaque scénario pilote plusieurs onglets (1 narrateur + N joueurs) via la god-view et joue jusqu'à l'écran de fin.

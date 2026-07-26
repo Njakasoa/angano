@@ -336,17 +336,20 @@ async function scAssets() {
   const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
   ok("Partie complète jouée pour charger tous les visuels", !!r.winner, `winner=${r.winner}`);
 
-  // Role portraits and scene banners must all resolve — a 404 there is a dead key.
-  // Power art is excluded: five illustrations are still to be produced (tracked by
-  // `bun run check:assets`, which lists them as warnings), and the codex renders
-  // their tiles regardless.
-  const imageMisses = [...new Set(assetMisses.filter((f) => /\.(webp|png)$/.test(f) && !f.startsWith("power_")))];
-  ok("Aucun portrait ni décor manquant sur une partie complète", imageMisses.length === 0, imageMisses.join(", "));
+  // Every visual must resolve — a 404 on an art key is a dead key, and it shows up
+  // on screen as a blank banner with nothing in the console. Power art is included
+  // now that the last five illustrations exist.
+  const imageMisses = [...new Set(assetMisses.filter((f) => /\.(webp|png)$/.test(f)))];
+  ok("Aucun visuel manquant sur une partie complète", imageMisses.length === 0, imageMisses.join(", "));
 
-  // Sanity-check the detector itself: the five unproduced power banners MUST be
-  // seen as missing, otherwise the assertion above proves nothing.
-  const powerMisses = [...new Set(assetMisses.filter((f) => f.startsWith("power_")))];
-  ok("Le détecteur repère bien les visuels absents", powerMisses.length > 0, `${powerMisses.length} pouvoirs à produire`);
+  // The assertion above is only worth anything if the detector can still see a miss.
+  // It used to lean on the unproduced banners; they exist now, so ask on purpose for
+  // a stem that never will.
+  const before = assetMisses.length;
+  await g.host.evaluate(() => fetch("/assets/images/power_qui_n_existe_pas.webp").catch(() => {}));
+  await sleep(400);
+  ok("Le détecteur repère bien un visuel absent", assetMisses.length > before,
+    assetMisses.slice(before).join(", ") || "aucun manquant détecté — l'assertion précédente ne prouve rien");
 
   // Every phase must end up with *something* to play, via the fallback chain.
   const audioHits = new Set(assetHits.filter((f) => f.endsWith(".mp3")));

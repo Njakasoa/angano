@@ -2,10 +2,12 @@
  * Generate the game's sound assets from `audio-plan.ts` via ElevenLabs.
  *
  *   ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts [--sfx] [--voice]
- *                                                           [--ambiance] [--force]
+ *                                     [--ambiance] [--pack[=<id>]] [--force]
  *
  * Default (no flag) produces sfx + voice: the two families that map cleanly onto
  * what the API does well. Ambiance is opt-in — see the note in audio-plan.ts.
+ * `--pack` covers every recorded legend; `--pack=<id>` narrows it to one, which is
+ * what you want with `--force`.
  *
  * Existing files are skipped unless `--force`, so a re-run costs nothing and you
  * can regenerate a single sound by deleting it. Nothing is written unless the

@@ -9,7 +9,6 @@ import type { PackLine } from "../src/audio/packs/line.ts";
 import { ALL as LANTERNES, PACK_ID as LANTERNES_ID } from "../src/audio/packs/lanternes-mangrove.ts";
 import { ALL as BARRIERE, PACK_ID as BARRIERE_ID } from "../src/audio/packs/barriere-rompue.ts";
 
-
 /** Shared style bed, so the whole soundtrack reads as one world. */
 export const SFX_STYLE =
   "dark Malagasy folk-tale atmosphere, organic acoustic sources (wood, breath, water, earth, raffia, animal skin drum), " +

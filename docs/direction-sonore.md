@@ -39,7 +39,9 @@ retenu.
 
 ## Casting
 
-Une seule voix porte tout le récit : c'est le fil rouge du conte. Le défaut actuel est
+**La voix du jeu est Grandpa Storyteller Oxley** (`0dPqNXnhg2bmxQv1WKDp`) — le pack
+du Lac, les 11 voix off statiques et la narration runtime. Une seule voix porte tout
+le récit : c'est le fil rouge du conte. Le défaut historique était
 **Arthur Martin** (`qCDtdqQv5bdcrgWED5k8`, `language: fr`, `narrative_story`) — un choix
 provisoire, retenu sur ses métadonnées, **pas à l'oreille**.
 
@@ -72,17 +74,21 @@ Mesuré sur une réplique de narration typique :
 
 | Modèle | Latence | Emploi |
 |---|---|---|
-| `eleven_v3` | 3 572 ms | le plus expressif ; trop lent pour le runtime |
-| `eleven_multilingual_v2` | 1 362 ms | **défaut des deux côtés** |
-| `eleven_flash_v2_5` | 544 ms | basse latence, le moins expressif |
+| `eleven_v3` | 3 572 ms | **tout ce qui est livré en fichier** — packs et voix statiques |
+| `eleven_multilingual_v2` | 1 362 ms | **le runtime** (core-api), où la latence compte |
+| `eleven_flash_v2_5` | 544 ms | basse latence, le moins expressif — inutilisé |
 
-Le warm runtime enchaîne ~10 répliques à 4 en parallèle dans un budget de 12 s :
-`multilingual_v2` y tient largement tout en lisant bien mieux que `flash`.
+Les deux côtés utilisent volontairement des modèles **différents**, ce qui n'était pas
+le cas avant. Une même voix ne rend pas pareil d'un modèle à l'autre, donc la règle
+n'est pas « le même partout » mais **le même que ce qu'on entend dans la même
+respiration** : les 11 voix statiques sont entendues dans la même partie que le pack
+enregistré, donc elles sont en `eleven_v3` comme lui. La latence de v3 ne les concerne
+pas — ce sont des fichiers, générés une fois.
 
-> ⚠️ **Garde le même modèle des deux côtés** (`ELEVENLABS_MODEL` dans core-api et pour
-> `gen:audio`). Une même voix ne rend pas pareil d'un modèle à l'autre : le conteur
-> changerait imperceptiblement de caractère entre une révélation de rôle (fichier
-> statique) et le récit (synthèse runtime).
+core-api garde `multilingual_v2` parce qu'il synthétise *pendant l'écran de
+préparation* : le warm enchaîne ~10 répliques à 4 en parallèle dans un budget de 12 s,
+que v3 ne tiendrait pas. Ça ne s'entend que sur une légende écrite par l'IA, qui n'a
+de toute façon aucun pack.
 
 Réglages, tous optionnels — omis, la voix garde ses propres défauts :
 
@@ -268,13 +274,19 @@ bun run check:assets
 durée, et la commande exacte qui le refait. C'est la table à consulter après une
 séance d'écoute.
 
-- ⚠️ **8 bruitages sur 14** — 6 rejetés à l'écoute, à refaire
-- ⚠️ **0 voix off statique sur 11** — toutes rejetées, à refaire
+**96 fichiers attendus, 96 produits** — `check:assets` passe sans une erreur ni un
+avertissement.
+
+- ✅ **14 bruitages** d'événement
+- ✅ **14 bruitages de tour de nuit** (`wake_*` / `act_*`)
+- ✅ **11 voix off statiques** — Oxley, `eleven_v3`
 - ✅ **13 ambiances de phase** composées, refermées en boucle par ffmpeg
-- ⚠️ **1 pack sur 4 légendes** — le Lac, 26 lignes gardées sur 37
-- ⏳ **14 bruitages de tour de nuit** (`--sfx`) et **7 lits foley** (`--foley`) —
-  écrits, jamais générés. Le jeu tourne sans : les tours sont muets et la nuit joue
-  ses lits musicaux.
+- ✅ **7 lits foley de nuit**, bouclés nativement par le modèle
+- ✅ **1 pack de narration** — le Lac, 37 lignes, Oxley
+
+Une seule légende sur quatre est enregistrée : `lac-jarres-blanches`, qui est pour
+cette raison **la légende par défaut** côté serveur. Les trois autres se jouent en
+voix runtime ou en texte.
 
 Une clé d'ambiance sans fichier retombe sur un placeholder via la chaîne de repli de
 `src/audio/manifest.ts` — déposer `nuit_songomby.mp3` suffit à le remplacer, sans

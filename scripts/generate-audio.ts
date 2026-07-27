@@ -19,13 +19,17 @@ import { mkdir, writeFile, access, unlink } from "node:fs/promises";
 import { AMBIANCE, FOLEY, NIGHT_SFX, PACKS, SFX, VOICE } from "./audio-plan.ts";
 
 const KEY = process.env.ELEVENLABS_API_KEY;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_NARRATOR ?? "qCDtdqQv5bdcrgWED5k8"; // Arthur Martin (fr)
+const VOICE_ID = process.env.ELEVENLABS_VOICE_NARRATOR ?? "0dPqNXnhg2bmxQv1WKDp"; // Grandpa Storyteller Oxley
 /**
- * Keep this in step with core-api's ELEVENLABS_MODEL. These lines are heard in the
- * same breath as the runtime narration, and the same voice renders differently
- * from one model to the next.
+ * `eleven_v3`, like the packs — and deliberately *not* core-api's model.
+ *
+ * The same voice renders audibly differently from one model to the next, and these
+ * lines are heard in the same breath as the recorded legend, so they have to match
+ * *it*. What kept them on multilingual_v2 was latency, which does not apply here:
+ * these are files, generated once. core-api keeps the faster model because it
+ * synthesises during a loading screen, with a twelve-second budget.
  */
-const MODEL = process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2";
+const MODEL = process.env.ELEVENLABS_MODEL ?? "eleven_v3";
 const BASE = process.env.ELEVENLABS_BASE_URL ?? "https://api.elevenlabs.io";
 const OUT = new URL("../public/assets/audio/", import.meta.url).pathname;
 

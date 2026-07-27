@@ -355,14 +355,16 @@ async function scAssets() {
   const audioHits = new Set(assetHits.filter((f) => f.endsWith(".mp3")));
   ok("Ambiances résolues par la chaîne de repli", audioHits.size >= 5, `${audioHits.size} pistes distinctes chargées`);
 
-  // The night defaults to foley, which is not produced yet: the chain must therefore
-  // have *tried* a foley bed and landed on the composed one. This is the mechanism
-  // that let the option ship before its audio — worth an assertion, because the
-  // failure mode is a silent night rather than an error.
-  const foleyTried = assetMisses.some((f) => /_foley\.mp3$/.test(f));
-  const nightPlayed = [...audioHits].some((f) => /^nuit_.*(?<!_foley)\.mp3$/.test(f));
-  ok("La nuit foley retombe sur le lit musical", foleyTried && nightPlayed,
-    `foley tenté=${foleyTried}, lit joué=${[...audioHits].filter((f) => f.startsWith("nuit_")).join(", ") || "aucun"}`);
+  // The night defaults to foley. This used to assert the *fallback* — that an
+  // unproduced foley bed lands on the composed one — and went red the day the beds
+  // were produced, which is the same trap as the missing-asset self-check above: an
+  // assertion whose subject was a gap closes with the gap. What matters now is the
+  // path players actually get.
+  const nightPlayed = [...audioHits].filter((f) => /^nuit_/.test(f));
+  const foleyPlayed = nightPlayed.filter((f) => /_foley\.mp3$/.test(f));
+  ok("La nuit joue bien ses lits foley", foleyPlayed.length > 0 && foleyPlayed.length === nightPlayed.length,
+    `${foleyPlayed.length}/${nightPlayed.length} lits de nuit en foley` +
+    (foleyPlayed.length === nightPlayed.length ? "" : ` — repli musical sur ${nightPlayed.filter((f) => !/_foley/.test(f)).join(", ")}`));
   await teardown();
 }
 
@@ -406,11 +408,9 @@ async function scRemoteAudio() {
 }
 
 /** File prefix each recorded pack was produced under — see src/audio/packs/. */
-const PACK_PREFIX = {
-  "lanternes-mangrove": "vo_lm_",
-  "barriere-rompue": "vo_br_",
-  "lac-jarres-blanches": "vo_lj_",
-};
+const PACK_PREFIX = { "lac-jarres-blanches": "vo_lj_" };
+/** Matches core-api's DEFAULT_STORY_PRESET_ID — the one legend that is recorded. */
+const DEFAULT_PRESET = "lac-jarres-blanches";
 
 /**
  * Recorded narration pack. The real risk is not "does a file exist" — check:assets
@@ -423,7 +423,7 @@ const PACK_PREFIX = {
  * by running the suite twice.
  */
 async function scPack() {
-  const preset = process.env.ANGANO_STORY_PRESET?.trim() || "lanternes-mangrove";
+  const preset = process.env.ANGANO_STORY_PRESET?.trim() || DEFAULT_PRESET;
   const prefix = PACK_PREFIX[preset];
   if (!prefix) {
     console.log(`⏭  pack — « ${preset} » n'a pas de pack enregistré, rien à vérifier`);

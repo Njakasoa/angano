@@ -10,7 +10,8 @@
     "check:assets": "bun scripts/check-assets.ts",
     "gen:audio": "bun scripts/generate-audio.ts",
     "doc:audio": "bun scripts/audio-inventory.ts",
-    "opt:images": "bun scripts/optimize-images.ts"
+    "opt:images": "bun scripts/optimize-images.ts",
+    "dico:sync": "bun scripts/dico-sync.ts"
   },
   "devDependencies": {
     "cwebp-bin": "^8.0.0",

@@ -54,19 +54,19 @@ const SAMPLES: Record<string, string> = {
   victoire: "Le village a chassé tous les monstres. L'aube, enfin, est douce.",
 };
 
-/** Mêmes règles que core-api/src/games/angano/pronunciation.ts. */
-const PHONETIC: Record<string, string> = {
-  songomby: "sougoumbi", mpisikidy: "mpissikidi", ombiasy: "oumbiassi", fanany: "fanani",
-  zazavavindrano: "zazavavindranou", kalanoro: "kalanourou", kinoly: "kinouli",
-  mpamosavy: "mpamoussavi", mponina: "mpounina", angano: "anganou", razana: "razana",
-  sikidy: "sikidi", fady: "fadi", ody: "oudi", ambohitra: "ambouitra",
-};
-const PATTERN = new RegExp(`\\b(${Object.keys(PHONETIC).sort((a, b) => b.length - a.length).join("|")})\\b`, "gi");
-const speakable = (t: string) =>
-  t.replace(PATTERN, (w) => {
-    const r = PHONETIC[w.toLowerCase()]!;
-    return w[0] === w[0]?.toUpperCase() ? r[0]!.toUpperCase() + r.slice(1) : r;
-  });
+/**
+ * Pronunciation comes from the ElevenLabs dictionary, not from rewriting the text —
+ * see `scripts/pronunciation-rules.ts`. This bench used to hold its own copy of the
+ * table, and that copy had already drifted from the other two: it alone knew
+ * `Ambohitra`. Auditioning against a different pronunciation than production ships
+ * is worse than useless, so there is nothing to keep in step any more.
+ */
+function dictionary(): { pronunciation_dictionary_id: string; version_id: string }[] | undefined {
+  const id = process.env.ELEVENLABS_DICT_ID;
+  const version = process.env.ELEVENLABS_DICT_VERSION;
+  return id && version ? [{ pronunciation_dictionary_id: id, version_id: version }] : undefined;
+}
+const DICT = dictionary();
 
 // ── args ────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
@@ -120,7 +120,7 @@ function lineTag(sample: string, customText: string | undefined): string {
 }
 
 async function synth(text: string, voice: string, model: string, settings: Settings, file: string) {
-  const body: Record<string, unknown> = { text: speakable(text), model_id: model };
+  const body: Record<string, unknown> = { text, model_id: model, ...(DICT ? { pronunciation_dictionary_locators: DICT } : {}) };
   if (Object.keys(settings).length) body.voice_settings = settings;
 
   const res = await fetch(`${BASE}/v1/text-to-speech/${encodeURIComponent(voice)}?output_format=mp3_44100_128`, {

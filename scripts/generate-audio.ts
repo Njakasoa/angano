@@ -70,21 +70,16 @@ const variants = Math.max(0, Number(argv.find((a) => a.startsWith("--variants=")
 const AUDITION = new URL("../audition/variantes/", import.meta.url).pathname;
 
 /**
- * Mirrors core-api's `pronunciation.ts`. Duplicated rather than shared because the
- * repos ship separately — keep the two in step when adding a role.
+ * Pronunciation is corrected upstream by the ElevenLabs dictionary, not by rewriting
+ * the text here — see `scripts/pronunciation-rules.ts`. Absent, the names are read as
+ * French, which is a worse recording rather than a broken one.
  */
-const PHONETIC: Record<string, string> = {
-  songomby: "sougoumbi", mpisikidy: "mpissikidi", ombiasy: "oumbiassi", fanany: "fanani",
-  zazavavindrano: "zazavavindranou", kalanoro: "kalanourou", kinoly: "kinouli",
-  mpamosavy: "mpamoussavi", mponina: "mpounina", angano: "anganou", razana: "razana",
-  sikidy: "sikidi", fady: "fadi", ody: "oudi",
-};
-const PATTERN = new RegExp(`\\b(${Object.keys(PHONETIC).sort((a, b) => b.length - a.length).join("|")})\\b`, "gi");
-const speakable = (text: string) =>
-  text.replace(PATTERN, (w) => {
-    const r = PHONETIC[w.toLowerCase()]!;
-    return w[0] === w[0]?.toUpperCase() ? r[0]!.toUpperCase() + r.slice(1) : r;
-  });
+function dictionary(): { pronunciation_dictionary_id: string; version_id: string }[] | undefined {
+  const id = process.env.ELEVENLABS_DICT_ID;
+  const version = process.env.ELEVENLABS_DICT_VERSION;
+  return id && version ? [{ pronunciation_dictionary_id: id, version_id: version }] : undefined;
+}
+const DICT = dictionary();
 
 const exists = (path: string) => access(path).then(() => true, () => false);
 
@@ -205,6 +200,7 @@ async function main() {
       "  ELEVENLABS_API_KEY=sk_... bun scripts/generate-audio.ts");
     process.exit(1);
   }
+  if (!DICT) console.warn("⚠️  ELEVENLABS_DICT_ID/_VERSION absents — les noms malgaches seront lus à la française.");
   await mkdir(OUT, { recursive: true });
   if (variants) await mkdir(AUDITION, { recursive: true });
   const tally = { written: 0, skipped: 0, failed: 0 };
@@ -226,7 +222,7 @@ async function main() {
     for (const v of VOICE) {
       count(await produce(v.text.slice(0, 48) + "…", v.file, () =>
         post(`${BASE}/v1/text-to-speech/${VOICE_ID}?output_format=mp3_44100_128`,
-          { text: speakable(v.text), model_id: MODEL, ...(SETTINGS ? { voice_settings: SETTINGS } : {}) })));
+          { text: v.text, model_id: MODEL, ...(SETTINGS ? { voice_settings: SETTINGS } : {}), ...(DICT ? { pronunciation_dictionary_locators: DICT } : {}) })));
     }
   }
 
@@ -272,7 +268,7 @@ async function main() {
         const spoken = line.direction ?? direction(line.label) + line.text;
         count(await produce(line.label, line.file, () =>
           post(`${BASE}/v1/text-to-speech/${packVoice}?output_format=mp3_44100_128`,
-            { text: speakable(spoken), model_id: packModel })));
+            { text: spoken, model_id: packModel, ...(DICT ? { pronunciation_dictionary_locators: DICT } : {}) })));
       }
     }
   }

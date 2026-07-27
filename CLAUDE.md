@@ -46,9 +46,17 @@ Deux pièges déjà corrigés, à ne pas réintroduire :
 La voix off se scinde en deux : texte fixe → fichier livré (`scripts/generate-audio.ts`) ;
 légende écrite par l'IA → synthétisée au runtime par core-api. Ne pas mélanger.
 
-Les noms malgaches sont **respellés phonétiquement avant synthèse** (`o` → `ou`,
-`y` final → `i`). La table existe en double : `core-api/src/games/angano/pronunciation.ts`
-et `scripts/generate-audio.ts`. En ajoutant un rôle, mettre les deux à jour.
+Les noms malgaches sont corrigés par un **dictionnaire de prononciation ElevenLabs**
+(`o` → `ou`, `y` final → `i`, `j` → `dz`), appliqué en amont : le texte part tel qu'il
+est écrit. Les règles vivent dans `scripts/pronunciation-rules.ts` et se publient par
+`bun run dico:sync`, qui imprime l'`ELEVENLABS_DICT_ID` / `_VERSION` à reporter dans
+les deux `.env`. En ajoutant un rôle **ou un nom de lieu**, éditer ce fichier et
+resynchroniser.
+
+> Cette table a longtemps existé en **trois copies** — et elles avaient divergé : une
+> seule connaissait `Ambohitra`, aucune ne couvrait le moindre nom de village. Ne pas
+> réintroduire de respelling dans le code : `voice.test.ts` échoue si le texte est
+> réécrit avant l'envoi.
 
 ## Images
 

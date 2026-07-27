@@ -101,10 +101,33 @@ Une voix française lit « Songomby » à la française et le massacre. Deux rè
 couvrent l'essentiel : le `o` malgache se dit **[u]** (→ `ou`) et le `y` final **[ɨ]**
 (→ `i`). D'où `Songomby` → *sougoumbi*, `Mpisikidy` → *mpissikidi*.
 
-La table est dans `core-api/src/games/angano/pronunciation.ts`, **dupliquée** dans
-`scripts/generate-audio.ts` (les deux dépôts sont livrés séparément). *Seule la forme
-prononcée change ; tout ce qui est affiché garde son orthographe réelle.* En ajoutant
-un rôle, penser aux deux fichiers.
+Ajoute `j` → **dz** pour les toponymes : `Ambohijanaka` → *ambouidzanaka*.
+
+C'est un **dictionnaire de prononciation hébergé chez ElevenLabs**, référencé par
+`ELEVENLABS_DICT_ID` / `_VERSION` dans les deux dépôts. Le texte part **tel qu'il est
+écrit** ; la correction se fait en aval. Les règles sont versionnées ici, dans
+`scripts/pronunciation-rules.ts`, et publiées par :
+
+```bash
+bun run dico:sync                 # crée un dictionnaire
+bun run dico:sync --id <id>       # remplace les règles d'un existant
+```
+
+Ce fichier est la source de vérité, pas le dictionnaire : une fois téléversé il est
+opaque — l'endpoint de téléchargement d'ElevenLabs répond `500` — donc une règle qui
+n'existerait que là-bas serait une règle que personne ne peut relire.
+
+> **Avant**, la table vivait en trois exemplaires : `core-api/pronunciation.ts`,
+> `generate-audio.ts` et `audition-voice.ts`. Elles avaient divergé — seule celle du
+> banc d'essai connaissait `Ambohitra`, et **aucune ne couvrait un nom de village**,
+> si bien que chaque légende s'ouvrait sur un toponyme lu à la française. Les trois
+> sont supprimées. `voice.test.ts` échoue si un respelling revient dans le code.
+
+Deux limites à connaître. Les règles sont de type **alias** (une orthographe en
+remplace une autre), pas **phoneme** : les règles phonétiques ne sont pas supportées
+par tous les modèles, les alias oui. Et un dictionnaire absent n'est pas une panne —
+les noms sont simplement lus à la française ; core-api et le générateur le signalent
+au démarrage, parce que rien en aval ne le ferait.
 
 ## La nuit s'écoute
 

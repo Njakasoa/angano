@@ -8,6 +8,7 @@
     "build": "bun scripts/check-assets.ts && tsc --noEmit && vite build",
     "preview": "vite preview",
     "check:assets": "bun scripts/check-assets.ts",
+    "check:live": "bun scripts/check-live.ts",
     "gen:audio": "bun scripts/generate-audio.ts",
     "doc:audio": "bun scripts/audio-inventory.ts",
     "opt:images": "bun scripts/optimize-images.ts",

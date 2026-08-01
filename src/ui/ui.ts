@@ -233,11 +233,29 @@ export class UI {
   /** Animate the phase countdown bar (depletes over `ms`). 0 hides it. */
   setTimer(ms: number) {
     const b = this.timerBar; if (!b) return;
+    b.classList.remove("pending");
     if (!ms || ms <= 0) { b.classList.add("hidden"); return; }
     b.classList.remove("hidden");
     b.style.transition = "none"; b.style.transform = "scaleX(1)";
     void b.offsetWidth; // force reflow so the next transition runs
     b.style.transition = `transform ${ms}ms linear`; b.style.transform = "scaleX(0)";
+  }
+
+  /**
+   * A wait whose end nobody knows: the legend is written server-side and takes as
+   * long as it takes.
+   *
+   * The server announces that phase with a duration all the same, so the bar used to
+   * count down to zero and then sit there, empty, for as long as the writing lasted —
+   * which reads as a frozen game. An indeterminate sweep says the only true thing:
+   * something is happening, and it is not over.
+   */
+  setTimerPending() {
+    const b = this.timerBar; if (!b) return;
+    b.classList.remove("hidden");
+    b.style.transition = "none";
+    b.style.transform = "";
+    b.classList.add("pending");
   }
 
   /** Full-screen phase flourish: the phase art + title, then it dissolves. Tap to skip. */

@@ -52,6 +52,7 @@ body {
 .chip.neutral { border-color: rgba(232, 193, 90, .45); }
 .chip.neutral.on { background: var(--gold); border-color: var(--gold); color: #231a04; }
 .hint { color: var(--muted); font-weight: 700; text-align: center; padding: 6px 0; }
+.hint-sub { font-weight: 600; font-size: .86rem; opacity: .8; margin-top: 4px; }
 
 /* ── in-game stage ── */
 .screen.stage { height: 100dvh; min-height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
@@ -71,6 +72,9 @@ body {
 .prompt-art { height: 84px; border-radius: 12px; background-size: cover; background-position: center 32%; margin-bottom: 8px; border: 1px solid var(--line); }
 .timer-bar { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; z-index: 2; background: linear-gradient(90deg, var(--gold), var(--accent)); transform-origin: left; }
 .timer-bar.hidden { opacity: 0; }
+/* Indeterminate: a wait with no known end (see UI.setTimerPending). */
+.timer-bar.pending { background: linear-gradient(90deg, transparent, var(--gold), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: timer-pending 1.8s linear infinite; }
+@keyframes timer-pending { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 
 .village { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; padding: 14px; align-content: start; overflow-y: auto; }
 .pcard { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 12px 6px; text-align: center; transition: transform .08s; }
@@ -194,6 +198,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img, .mute.blocked { animation: none !important; }
   .timer-bar { transition: none !important; }
+  /* The sweep would be the only thing moving on the prep screen — say it in text instead. */
+  .timer-bar.pending { animation: none !important; background: var(--gold); opacity: .45; }
 }
 
 /* ── onboarding & accessibilité ── */

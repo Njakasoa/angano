@@ -39,6 +39,8 @@ export class Game {
   private sameRoom = false;
   private canRewind = false;
   private manualPacing = false;
+  /** When the legend started being written, and the ticker that keeps the wait honest. */
+  private prepSince = 0; private prepTicker?: number;
   private leaving = false;
   private currentName = ""; private currentRoom = ""; private reconnectTries = 0;
 
@@ -66,7 +68,7 @@ export class Game {
   private get amNarrator() { return this.narratorId === this.selfId; }
 
   private menu() {
-    this.leaving = true; this.client?.close(); this.client = undefined; this.amb.stopMusic(); this.amb.stopVoice();
+    this.leaving = true; this.client?.close(); this.client = undefined; this.amb.stopMusic(); this.amb.stopVoice(); this.endPrepWait();
     try { sessionStorage.removeItem("angano_active"); } catch { /* */ }
     this.ui.leaveStage(); this.phase = "lobby"; this.role = null;
     this.ui.showMenu((name, room) => this.startConnect(name, room ?? randomCode()));
@@ -104,6 +106,7 @@ export class Game {
         this.applyAudioRouting();
         this.journal = []; this.story = null; this.storyIntroShown = false; this.playerStory = null; this.missionSheets = []; this.seenRequestIds.clear(); this.pack = null; // fresh game / rematch
         if (this.phase !== "lobby" || this.ui.inStage()) { this.ui.leaveStage(); }
+        this.endPrepWait(); // a rematch leaves the prep screen behind
         this.phase = "lobby";
         if (!this.lobby || !document.querySelector(".players")) {
           this.lobby = this.ui.showLobby({
@@ -172,7 +175,10 @@ export class Game {
           this.narrate(m.voiceUrl, m.text);
         }
         this.ui.setBanner(m.imageKey, m.title, m.text, m.day);
-        this.ui.setTimer(m.durationMs);
+        // The prep phase carries a duration, but it ends when the legend is written —
+        // not when the bar runs out. Counting down there promises something the server
+        // has not promised; the wait is shown as a wait instead, and ticked in words.
+        if (m.phase === "roles") this.beginPrepWait(); else { this.endPrepWait(); this.ui.setTimer(m.durationMs); }
         this.render();
       });
 
@@ -330,7 +336,10 @@ export class Game {
         )]
       : [];
     return [
-      h("div", { class: "nar-script" },
+      // `data-story-id` names the preset this legend came from, and is absent when the
+      // AI wrote it. It is what tells a reader — a test, or a puzzled narrator — why
+      // the recorded voice is or is not playing: a pack belongs to one preset.
+      h("div", { class: "nar-script", ...(s.storyId ? { "data-story-id": s.storyId } : {}) },
         h("div", { class: "ns-title" }, "📜 " + s.title),
         h("div", { class: "ns-intro" }, s.intro),
         ...composition,
@@ -443,8 +452,29 @@ export class Game {
     )];
   }
 
+  /**
+   * The legend is written server-side and can take half a minute. Measured on the
+   * live site: ~30 s, every game. A screen that says nothing for that long reads as a
+   * crash, so the wait counts itself out loud, and says so plainly once it is long.
+   */
+  private beginPrepWait() {
+    if (!this.prepSince) this.prepSince = Date.now();
+    this.ui.setTimerPending();
+    this.prepTicker ??= window.setInterval(() => this.render(), 1000);
+  }
+  private endPrepWait() {
+    if (this.prepTicker) { clearInterval(this.prepTicker); this.prepTicker = undefined; }
+    this.prepSince = 0;
+  }
+
   private actionPanel(h: UI["el"]): (HTMLElement | string)[] {
-    if (this.phase === "roles") return [h("div", { class: "hint" }, "La légende se prépare… ✨")];
+    if (this.phase === "roles") {
+      const s = this.prepSince ? Math.floor((Date.now() - this.prepSince) / 1000) : 0;
+      return [h("div", { class: "hint" },
+        `La légende s'écrit… ✨ ${s} s`,
+        s >= 20 ? h("div", { class: "hint-sub" }, "Celle-ci prend son temps — la partie démarrera dès qu'elle sera prête.") : "",
+      )];
+    }
     if (!this.prompt || this.amNarrator) {
       const p = this.players.find((x) => x.id === this.selfId);
       if (p && !p.alive) return [h("div", { class: "hint" }, "Tu es mort·e — observe la partie. 👻")];

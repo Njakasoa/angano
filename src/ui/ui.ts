@@ -73,13 +73,14 @@ export class UI {
   showRules(onBack: () => void) {
     const sec = (t: string, d: string) => h("div", { class: "rules-sec" }, h("div", { class: "rs-t" }, t), h("div", { class: "rs-d" }, d));
     this.mount(h("div", { class: "screen center" },
-      h("div", { class: "card wide scroll" },
+      h("div", { class: "card wide scroll modal-frame" },
         h("div", { class: "brand small" }, "COMMENT JOUER"),
-        sec("🌙 La nuit", "Les rôles agissent en secret, l'un après l'autre. Les Songomby choisissent ensemble une victime à dévorer."),
-        sec("🌅 L'aube", "Le village se réveille et découvre qui est mort cette nuit — et le rôle de la victime."),
-        sec("☀️ Le jour", "Tout le monde débat à voix haute, puis vote pour éliminer un suspect. L'éliminé révèle son rôle."),
-        sec("🎯 Le but", "Le village l'emporte en éliminant tous les Songomby. Les Songomby gagnent dès qu'ils égalent le nombre de villageois."),
-        sec("🎙️ Le narrateur", "Un siège obligatoire à part (il ne joue pas) : il voit tout, lance l'ambiance, valide les missions et rythme les phases. Le serveur garde l'autorité."),
+        h("div", { class: "modal-body" },
+          sec("🌙 La nuit", "Les rôles agissent en secret, l'un après l'autre. Les Songomby choisissent ensemble une victime à dévorer."),
+          sec("🌅 L'aube", "Le village se réveille et découvre qui est mort cette nuit — et le rôle de la victime."),
+          sec("☀️ Le jour", "Tout le monde débat à voix haute, puis vote pour éliminer un suspect. L'éliminé révèle son rôle."),
+          sec("🎯 Le but", "Le village l'emporte en éliminant tous les Songomby. Les Songomby gagnent dès qu'ils égalent le nombre de villageois."),
+          sec("🎙️ Le narrateur", "Un siège obligatoire à part (il ne joue pas) : il voit tout, lance l'ambiance, valide les missions et rythme les phases. Le serveur garde l'autorité.")),
         h("button", { class: "btn big", onclick: onBack }, "← Retour"),
       )));
   }
@@ -110,19 +111,21 @@ export class UI {
         // A role with no power gets no plate and no consolation line: the description
         // above already says it, and saying it twice is how a screen starts padding.
         ...(r.powers ?? []).map((p) => h("figure", { class: "ct-power" + (p.passive ? " passive" : "") },
-          h("img", { class: "ct-power-img", src: imageUrl(p.art), alt: "", loading: "lazy" }),
+          // `decoding="async"` matters here: three 1024px paintings decode the instant a
+          // role opens, and on a phone that decode lands on the same frame as the open.
+          h("img", { class: "ct-power-img", src: imageUrl(p.art), alt: "", loading: "lazy", decoding: "async" }),
           h("figcaption", {},
             h("div", { class: "ct-label" }, p.label),
             h("div", { class: "ct-meta" },
               h("span", { class: "pill " + (p.passive ? "pass" : "act") }, p.passive ? "Passif" : "Actif"),
               h("span", { class: "ct-when" }, p.when))))))));
     this.mount(h("div", { class: "screen center" },
-        h("div", { class: "card wide scroll codex-card" },
+        h("div", { class: "card wide scroll modal-frame" },
         h("div", { class: "brand small" }, "LES RÔLES"),
         // Says what the list is and what the camp rules mean, in one line — the old
         // "Bleu = village · Rouge = Songomby" legend explained a colour instead.
         h("div", { class: "tag" }, "Six au village, deux contre lui, un qui n'appartient à personne."),
-        h("div", { class: "codex" }, ...tiles),
+        h("div", { class: "codex modal-body" }, ...tiles),
         h("button", { class: "btn big", onclick: onBack }, "← Retour"),
       )));
   }

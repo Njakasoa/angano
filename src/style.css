@@ -199,7 +199,8 @@ body {
 @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img, .mute.blocked, .ct-open { animation: none !important; }
+  .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img, .mute.blocked { animation: none !important; }
+  .codex-tile::details-content { transition: none !important; }
   .timer-bar { transition: none !important; }
   /* The sweep would be the only thing moving on the prep screen — say it in text instead. */
   .timer-bar.pending { animation: none !important; background: var(--gold); opacity: .45; }
@@ -209,6 +210,12 @@ body {
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
 .btn.small { min-height: 40px; }
 .card.scroll { max-height: 86dvh; overflow-y: auto; text-align: left; }
+/* The frame holds still and only the middle moves. Scrolling the whole panel takes
+   the title and the way out off the screen with it — on nine roles, or five rules,
+   that means scrolling back up just to leave. */
+.card.scroll.modal-frame { display: flex; flex-direction: column; overflow: hidden; }
+.modal-frame > .btn.big { flex: 0 0 auto; }
+.modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
 .card.scroll .brand, .card.scroll > .tag { text-align: center; display: block; }
 .rules-sec { background: #0f1424; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
 .rs-t { font-weight: 800; color: var(--moon); }
@@ -228,8 +235,20 @@ body {
 .ct-img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: 0 0 auto; }
 .ct-body { flex: 1 1 auto; min-width: 0; }
 .ct-name { font-family: "Cinzel", serif; font-weight: 800; }
-.ct-open { animation: ct-unfold .22s ease-out; }
-@keyframes ct-unfold { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+/* Animate the *opening*, not the contents.
+   <details> reveals its content in one frame: the card snaps to full height — some
+   500px of paintings — and the whole list below jumps. Fading the content in on top
+   of that animated the passenger and not the vehicle, which is exactly what read as
+   a stutter. Guarded, because this is the only way to transition to a height nobody
+   measured; where it is unsupported the card opens instantly, as it always did. */
+@supports (interpolate-size: allow-keywords) and selector(::details-content) {
+  .codex-tile { interpolate-size: allow-keywords; }
+  .codex-tile::details-content {
+    block-size: 0; overflow: hidden;
+    transition: block-size .26s ease, content-visibility .26s allow-discrete;
+  }
+  .codex-tile[open]::details-content { block-size: auto; }
+}
 .ct-desc { color: var(--muted); font-weight: 700; font-size: .82rem; margin: 8px 0 10px; }
 
 /* One power: the painting in the treatment .prompt-art already uses for exactly this
@@ -239,7 +258,7 @@ body {
 .ct-power { margin: 0 0 10px; }
 .ct-power:last-child { margin-bottom: 0; }
 .ct-power-img { display: block; width: 100%; height: 100px; object-fit: cover; object-position: center 32%;
-  border-radius: 12px; border: 1px solid var(--line); }
+  border-radius: 12px; border: 1px solid var(--line); background: #0b0f1c; }
 .ct-label { font-weight: 800; font-size: .86rem; color: #dfe6ff; margin-top: 6px; }
 .ct-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .ct-when { color: var(--muted); font-weight: 700; font-size: .78rem; }

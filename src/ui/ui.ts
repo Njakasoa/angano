@@ -86,22 +86,22 @@ export class UI {
   /**
    * The codex — nine roles, twelve paintings.
    *
-   * It used to be a flat list of cards with the art crushed into 54px strips, which
-   * buried the one thing worth looking at and made every role cost a scroll. It is
-   * now an index that opens one role at a time: the nine names fit on a phone
-   * screen, and the paintings get the full width when you ask for them.
-   *
-   * `<details>` rather than a click handler: keyboard, screen readers and
-   * find-in-page all work without a line of state.
+   * Same card as the rest of the app: rounded, a two-pixel border tinted by camp, and
+   * the same `<details>` the narrator's mission list uses — keyboard, screen readers
+   * and find-in-page for free, no state to hold. What this screen asks for on top is
+   * room for the art: it is the only place a passive or a day action is ever
+   * pictured, and 54px strips showed none of it.
    */
   showCodex(onBack: () => void) {
     const tiles = Object.values(ROLES).map((r) => h("details", { class: "codex-tile " + teamClass(r.team) },
       h("summary", { class: "ct-head" },
-        h("img", { class: "ct-img", src: imageUrl(r.asset), alt: "", width: "48", height: "48" }),
-        h("div", { class: "ct-body" },
-          h("div", { class: "ct-name" }, r.nameMg),
-          h("div", { class: "ct-team" }, teamLabel(r.team))),
-        h("span", { class: "ct-caret", "aria-hidden": "true" }, "▾")),
+        h("img", { class: "ct-img", src: imageUrl(r.asset), alt: "", width: "56", height: "56" }),
+        h("div", { class: "ct-body" }, h("div", { class: "ct-name" }, r.nameMg)),
+        // Only the camps that are not the village get a pill. Six identical "VILLAGE"
+        // badges say nothing the blue border has not already said, and they bury the
+        // two rows a player is actually scanning for. The line above the list gives
+        // the key: six at the village, two against it, one belonging to nobody.
+        r.team === "village" ? "" : h("span", { class: "pill " + teamClass(r.team) }, teamLabel(r.team))),
       h("div", { class: "ct-open" },
         h("p", { class: "ct-desc" }, r.desc),
         // Several powers are passives or day actions with no phase banner — this is
@@ -109,11 +109,13 @@ export class UI {
         // costs nothing, which matters on the mobile data these games are played on.
         // A role with no power gets no plate and no consolation line: the description
         // above already says it, and saying it twice is how a screen starts padding.
-        ...(r.powers ?? []).map((p) => h("figure", { class: "ct-plate" + (p.passive ? " passive" : "") },
+        ...(r.powers ?? []).map((p) => h("figure", { class: "ct-power" + (p.passive ? " passive" : "") },
           h("img", { class: "ct-power-img", src: imageUrl(p.art), alt: "", loading: "lazy" }),
           h("figcaption", {},
-            h("span", { class: "ct-when" }, p.passive ? `Passif · ${p.when}` : p.when),
-            h("span", { class: "ct-label" }, p.label)))))));
+            h("div", { class: "ct-label" }, p.label),
+            h("div", { class: "ct-meta" },
+              h("span", { class: "pill " + (p.passive ? "pass" : "act") }, p.passive ? "Passif" : "Actif"),
+              h("span", { class: "ct-when" }, p.when))))))));
     this.mount(h("div", { class: "screen center" },
         h("div", { class: "card wide scroll codex-card" },
         h("div", { class: "brand small" }, "LES RÔLES"),

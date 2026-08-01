@@ -132,7 +132,10 @@ body {
 .mission-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
 .mission-title { font-family: "Cinzel", serif; font-weight: 800; color: var(--gold); overflow-wrap: anywhere; }
 .mission-count { color: var(--muted); font-weight: 800; font-size: .78rem; white-space: nowrap; }
-.mission-status { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; font-weight: 900; font-size: .72rem; text-transform: uppercase; white-space: nowrap; }
+/* The shape a small status marker takes, everywhere. `.mission-status` was the first
+   to need it; the codex needs the same thing for a camp and for a kind of power, and
+   inventing a second one is how an interface starts speaking two dialects. */
+.pill, .mission-status { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; font-weight: 900; font-size: .72rem; text-transform: uppercase; white-space: nowrap; }
 .mission-status.ok { background: rgba(82, 201, 139, .18); color: #6ee7a8; }
 .mission-status.ko { background: rgba(255, 93, 108, .18); color: #ff9aa5; }
 .mission-status.wait { background: rgba(232, 193, 90, .16); color: var(--gold); }
@@ -197,7 +200,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .phase-intro.in, .phase-intro.out, .pcard.dying, .rolecard.reveal, .banner-img, .mute.blocked, .ct-open { animation: none !important; }
-  .ct-caret { transition: none !important; }
   .timer-bar { transition: none !important; }
   /* The sweep would be the only thing moving on the prep screen — say it in text instead. */
   .timer-bar.pending { animation: none !important; background: var(--gold); opacity: .45; }
@@ -213,44 +215,39 @@ body {
 .rs-d { color: var(--muted); font-weight: 700; font-size: .9rem; margin-top: 3px; }
 .rc-goal { color: var(--gold); font-weight: 800; font-size: .82rem; margin-top: 4px; }
 /* ── codex ──
-   An index of nine that opens one role at a time. The paintings are the content
-   here — they are the only place a passive or a day action is ever pictured — so
-   they get the full width, and everything around them stays quiet: a hairline per
-   camp instead of a coloured frame, one type scale, no card inside a card. */
-.codex { display: flex; flex-direction: column; margin: 12px 0 4px; text-align: left;
-  border-top: 1px solid var(--line); }
-.codex-tile { border-bottom: 1px solid var(--line); }
-.ct-head { display: flex; gap: 12px; align-items: center; padding: 10px 4px; cursor: pointer; list-style: none;
-  border-left: 2px solid transparent; padding-left: 10px; transition: border-color .15s, background .15s; }
+   Nine roles, twelve paintings. Same card as everywhere else in the app — rounded,
+   two-pixel border tinted by camp, like .rolecard and .pcard — and the same
+   <details> as the narrator's mission list, so a role opens without a line of state.
+   What is new here is only how much room the art gets: the paintings are the whole
+   point of this screen and the only place a passive is ever pictured. */
+.codex { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; text-align: left; }
+.codex-tile { background: #0f1424; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
+.codex-tile.evil { border-color: var(--evil); } .codex-tile.good { border-color: var(--good); } .codex-tile.neutral { border-color: var(--gold); }
+.ct-head { display: flex; gap: 10px; align-items: center; cursor: pointer; list-style: none; }
 .ct-head::-webkit-details-marker { display: none; }
-.codex-tile.evil > .ct-head { border-left-color: var(--evil); }
-.codex-tile.good > .ct-head { border-left-color: var(--good); }
-.codex-tile.neutral > .ct-head { border-left-color: var(--gold); }
-.ct-head:hover, .codex-tile[open] > .ct-head { background: #0f1424; }
-.ct-img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: 0 0 auto; }
+.ct-img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: 0 0 auto; }
 .ct-body { flex: 1 1 auto; min-width: 0; }
-.ct-name { font-family: "Cinzel", serif; font-weight: 800; font-size: 1.02rem; }
-.ct-team { color: var(--muted); font-weight: 800; font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; margin-top: 1px; }
-.ct-caret { color: var(--muted); flex: 0 0 auto; transition: transform .2s; }
-.codex-tile[open] .ct-caret { transform: rotate(180deg); }
-.ct-open { padding: 2px 4px 14px 12px; animation: ct-unfold .22s ease-out; }
+.ct-name { font-family: "Cinzel", serif; font-weight: 800; }
+.ct-open { animation: ct-unfold .22s ease-out; }
 @keyframes ct-unfold { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-.ct-desc { color: var(--muted); font-weight: 700; font-size: .86rem; margin: 0 0 12px; }
+.ct-desc { color: var(--muted); font-weight: 700; font-size: .82rem; margin: 8px 0 10px; }
 
-/* A plate: the painting, and inside its lower band what triggers it. Three identical
-   tiles under the Kinoly read as three things to do; two of them are simply true. */
-.ct-plate { position: relative; margin: 0 0 10px; border-radius: 12px; overflow: hidden;
-  border: 1px solid var(--line); border-bottom: 2px solid var(--gold); background: #0b0e18; }
-/* Passives are told, not coded: the caption says "Passif ·" and the rule only
-   seconds it. A colour alone would leave the distinction unreadable to a good
-   share of players, and a dashed rule read as a cut-here line. */
-.ct-plate.passive { border-bottom-color: #c9a04e; }
-.ct-power-img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; }
-.ct-plate figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12px 9px;
-  background: linear-gradient(transparent, rgba(11,14,24,.72) 42%, rgba(11,14,24,.94)); }
-.ct-when { display: block; color: var(--gold); font-weight: 800; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; }
-.ct-plate.passive .ct-when { color: #c9a04e; }
-.ct-label { display: block; font-family: "Cinzel", serif; font-weight: 800; font-size: .96rem; margin-top: 1px; }
+/* One power: the painting in the treatment .prompt-art already uses for exactly this
+   (a power whose action has no phase banner), and the caption under it rather than
+   over it. Three identical tiles under the Kinoly read as three things to do, when
+   two of them are simply true about him — hence the kind, said outright. */
+.ct-power { margin: 0 0 10px; }
+.ct-power:last-child { margin-bottom: 0; }
+.ct-power-img { display: block; width: 100%; height: 100px; object-fit: cover; object-position: center 32%;
+  border-radius: 12px; border: 1px solid var(--line); }
+.ct-label { font-weight: 800; font-size: .86rem; color: #dfe6ff; margin-top: 6px; }
+.ct-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.ct-when { color: var(--muted); font-weight: 700; font-size: .78rem; }
+.pill.act { background: rgba(232, 193, 90, .16); color: var(--gold); }
+.pill.pass { background: rgba(151, 160, 196, .18); color: var(--moon); }
+.pill.good { background: rgba(110, 168, 255, .2); color: #9cc2ff; }
+.pill.evil { background: rgba(255, 93, 108, .18); color: #ff9aa5; }
+.pill.neutral { background: rgba(232, 193, 90, .16); color: var(--gold); }
 .presets { display: flex; gap: 6px; flex-wrap: wrap; }
 .presets .chip { background: #161d33; }
 

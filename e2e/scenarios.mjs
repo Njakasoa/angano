@@ -368,7 +368,7 @@ async function scAssets() {
   // Two of the twelve are things that simply happen to you, not things you do. The
   // codex saying so is the whole point of the caption — a Kinoly reading three
   // identical tiles goes looking for a button that does not exist.
-  const passives = await page.locator(".ct-plate.passive").count();
+  const passives = await page.locator(".ct-power.passive").count();
   ok("Codex : les passifs sont annoncés comme tels", passives === 3, `passifs=${passives}`);
 
   // Play a real game so every phase banner and role portrait gets requested.

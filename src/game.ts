@@ -1,4 +1,4 @@
-import { UI } from "./ui/ui.ts";
+import { UI, teamLabel } from "./ui/ui.ts";
 import { AudioEngine } from "./audio/engine.ts";
 import { nightSfx } from "./audio/manifest.ts";
 import { connectAngano, apiMediaUrl } from "./net/online.ts";
@@ -586,7 +586,4 @@ function statusClass(s: MissionStatus): string {
 }
 function rewardStatusLabel(status: PlayerMissionSheet["rewards"][number]["status"], usesLeft: number): string {
   return status === "unlocked" ? `${usesLeft} usage` : status === "used" ? "utilisé" : "verrouillé";
-}
-function teamLabel(team: RoleInfo["team"]): string {
-  return team === "songomby" ? "camp Songomby" : team === "neutre" ? "neutre" : "village";
 }

@@ -83,22 +83,43 @@ export class UI {
         h("button", { class: "btn big", onclick: onBack }, "← Retour"),
       )));
   }
+  /**
+   * The codex — nine roles, twelve paintings.
+   *
+   * It used to be a flat list of cards with the art crushed into 54px strips, which
+   * buried the one thing worth looking at and made every role cost a scroll. It is
+   * now an index that opens one role at a time: the nine names fit on a phone
+   * screen, and the paintings get the full width when you ask for them.
+   *
+   * `<details>` rather than a click handler: keyboard, screen readers and
+   * find-in-page all work without a line of state.
+   */
   showCodex(onBack: () => void) {
-    const tiles = Object.values(ROLES).map((r) => h("div", { class: "codex-tile " + teamClass(r.team) },
-      h("div", { class: "ct-head" },
-        h("div", { class: "ct-img", style: `background-image:url(${imageUrl(r.asset)})` }),
-        h("div", { class: "ct-body" }, h("div", { class: "ct-name" }, r.nameMg), h("div", { class: "ct-desc" }, r.desc))),
-      // Several powers are passives or day actions with no phase banner — this is
-      // the only place their art is ever shown.
-      r.powers?.length
-        ? h("div", { class: "ct-powers" }, ...r.powers.map((p) => h("figure", { class: "ct-power" },
-            h("div", { class: "ct-power-img", style: `background-image:url(${imageUrl(p.art)})` }),
-            h("figcaption", {}, p.label))))
-        : ""));
+    const tiles = Object.values(ROLES).map((r) => h("details", { class: "codex-tile " + teamClass(r.team) },
+      h("summary", { class: "ct-head" },
+        h("img", { class: "ct-img", src: imageUrl(r.asset), alt: "", width: "48", height: "48" }),
+        h("div", { class: "ct-body" },
+          h("div", { class: "ct-name" }, r.nameMg),
+          h("div", { class: "ct-team" }, teamLabel(r.team))),
+        h("span", { class: "ct-caret", "aria-hidden": "true" }, "▾")),
+      h("div", { class: "ct-open" },
+        h("p", { class: "ct-desc" }, r.desc),
+        // Several powers are passives or day actions with no phase banner — this is
+        // the only place their art is ever shown. The plates are lazy: a closed role
+        // costs nothing, which matters on the mobile data these games are played on.
+        // A role with no power gets no plate and no consolation line: the description
+        // above already says it, and saying it twice is how a screen starts padding.
+        ...(r.powers ?? []).map((p) => h("figure", { class: "ct-plate" + (p.passive ? " passive" : "") },
+          h("img", { class: "ct-power-img", src: imageUrl(p.art), alt: "", loading: "lazy" }),
+          h("figcaption", {},
+            h("span", { class: "ct-when" }, p.passive ? `Passif · ${p.when}` : p.when),
+            h("span", { class: "ct-label" }, p.label)))))));
     this.mount(h("div", { class: "screen center" },
-        h("div", { class: "card wide scroll" },
+        h("div", { class: "card wide scroll codex-card" },
         h("div", { class: "brand small" }, "LES RÔLES"),
-        h("div", { class: "tag" }, "Bleu = village · Rouge = Songomby · Or = neutre"),
+        // Says what the list is and what the camp rules mean, in one line — the old
+        // "Bleu = village · Rouge = Songomby" legend explained a colour instead.
+        h("div", { class: "tag" }, "Six au village, deux contre lui, un qui n'appartient à personne."),
         h("div", { class: "codex" }, ...tiles),
         h("button", { class: "btn big", onclick: onBack }, "← Retour"),
       )));
@@ -363,6 +384,10 @@ function phaseIntroDurationMs(title: string, text: string, phaseMs?: number): nu
 }
 function teamClass(team: RoleInfo["team"]): string {
   return team === "songomby" ? "evil" : team === "neutre" ? "neutral" : "good";
+}
+/** How a camp is named to players — the codex and the game log say the same words. */
+export function teamLabel(team: RoleInfo["team"]): string {
+  return team === "songomby" ? "camp Songomby" : team === "neutre" ? "neutre" : "village";
 }
 function roleToggleClass(team: RoleInfo["team"]): string {
   return team === "songomby" ? " evil" : team === "neutre" ? " neutral" : "";

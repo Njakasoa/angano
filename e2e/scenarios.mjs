@@ -364,8 +364,14 @@ async function scAssets() {
   const powers = await page.locator(".ct-power-img").count();
   ok("Codex : galerie des pouvoirs rendue", powers === 12, `vignettes=${powers}`);
 
-  const styles = await page.locator(".ct-power-img").first().getAttribute("style");
-  ok("Codex : les vignettes pointent vers du WebP", /\.webp\)/.test(styles || ""), styles || "");
+  const src = await page.locator(".ct-power-img").first().getAttribute("src");
+  ok("Codex : les vignettes pointent vers du WebP", /\.webp$/.test(src || ""), src || "");
+
+  // Two of the twelve are things that simply happen to you, not things you do. The
+  // codex saying so is the whole point of the caption — a Kinoly reading three
+  // identical tiles goes looking for a button that does not exist.
+  const passives = await page.locator(".ct-plate.passive").count();
+  ok("Codex : les passifs sont annoncés comme tels", passives === 3, `passifs=${passives}`);
 
   // Play a real game so every phase banner and role portrait gets requested.
   await teardown();

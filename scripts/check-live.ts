@@ -30,17 +30,37 @@ const git = (...args: string[]): string | null => {
   catch { return null; }
 };
 
-/** A file is served when the answer is not an error *and* not the app's own HTML. */
-async function served(path: string): Promise<{ ok: boolean; why: string }> {
+/** One HEAD. `ok` is false for an error *and* for the app's own HTML. */
+async function probe(url: string): Promise<{ ok: boolean; why: string }> {
   try {
-    const res = await fetch(`${BASE}/assets/${path}`, { method: "HEAD", redirect: "follow" });
+    const res = await fetch(url, { method: "HEAD", redirect: "follow" });
     const type = res.headers.get("content-type") ?? "";
     if (res.status >= 400) return { ok: false, why: `HTTP ${res.status}` };
-    if (type.startsWith("text/html")) return { ok: false, why: "fallback SPA (jamais déployé)" };
+    if (type.startsWith("text/html")) return { ok: false, why: "page de repli au lieu du fichier" };
     return { ok: true, why: type };
   } catch (e) {
     return { ok: false, why: `injoignable (${(e as Error).message})` };
   }
+}
+
+/**
+ * Is this file served — and if not, is it absent or merely stale at the edge?
+ *
+ * The distinction is not academic. `_headers` marks `/assets/*` immutable for a year,
+ * and that rule matches the *path*: a request made while the file was missing had the
+ * fallback HTML cached on its URL, and deploying the file afterwards did not evict it.
+ * The site then reports a hole that the deployment has already filled — which reads
+ * exactly like a failed deploy and sends you looking in the wrong place. So a miss is
+ * asked a second time with a cache-buster, and the two answers are told apart.
+ */
+async function served(path: string): Promise<{ ok: boolean; why: string; stale?: boolean }> {
+  const url = `${BASE}/assets/${path}`;
+  const direct = await probe(url);
+  if (direct.ok) return direct;
+  const fresh = await probe(`${url}?nocache=${path.length}${Date.now()}`);
+  return fresh.ok
+    ? { ok: false, stale: true, why: "déployé, mais le CDN sert encore l'ancienne réponse — à purger" }
+    : { ok: false, why: `${direct.why} (jamais déployé)` };
 }
 
 /** Run `jobs` a few at a time — the whole inventory is ~130 requests. */
@@ -84,21 +104,30 @@ async function main() {
 
   const refs: AssetRef[] = [...imageAssets(), ...foleyAssets(), ...oneShotAssets(), ...packAssets()];
   const results = await pooled(refs.map((ref) => async () => ({ ref, res: await served(ref.path) })));
+  let stale = 0;
   for (const { ref, res } of results) {
     if (res.ok) continue;
+    if (res.stale) stale++;
     (ref.severity === "error" ? errors : warnings).push(`${ref.label} — ${ref.path} : ${res.why}`);
   }
 
   // A music key is fine as long as one file in its chain is served.
   const chains = musicChains();
   const chainResults = await pooled(chains.map((chain) => async () => {
-    for (const file of chain.files) if ((await served(`audio/${file}`)).ok) return file;
-    return null;
+    let anyStale = false;
+    for (const file of chain.files) {
+      const res = await served(`audio/${file}`);
+      if (res.ok) return { found: file, anyStale };
+      anyStale ||= !!res.stale;
+    }
+    return { found: null, anyStale };
   }));
   chains.forEach((chain, i) => {
-    const found = chainResults[i];
-    if (!found) errors.push(`music "${chain.key}" — aucun fichier en ligne (${chain.files.join(", ")}) → phase muette pour ce manifeste`);
-    else if (found !== chain.files[0]) warnings.push(`music "${chain.key}" — repli sur ${found}`);
+    const { found, anyStale } = chainResults[i]!;
+    if (found) { if (found !== chain.files[0]) warnings.push(`music "${chain.key}" — repli sur ${found}`); return; }
+    if (anyStale) stale++;
+    errors.push(`music "${chain.key}" — ${chain.files.join(", ")} : ` +
+      (anyStale ? "déployé, mais le CDN sert encore l'ancienne réponse — à purger" : "aucun fichier en ligne → phase muette"));
   });
 
   // Warnings arrive by the dozen when a whole family is missing; keep the tail short.
@@ -108,6 +137,11 @@ async function main() {
   for (const e of errors) console.error(`❌ ${e}`);
 
   console.log(`\n${refs.length + chains.length} clé(s) sondée(s) · ${errors.length} erreur(s) · ${warnings.length} avertissement(s)`);
+  if (stale) {
+    console.log(`\n🧹 ${stale} fichier(s) sont bien en ligne mais le CDN sert encore la réponse d'avant.`);
+    console.log("   Purger le cache Cloudflare sur ces chemins — un redéploiement ne les évincera pas :");
+    console.log("   ils ont été mis en cache pour un an (`_headers`: /assets/* immutable) le jour où ils manquaient.");
+  }
   if (errors.length) process.exit(1);
 }
 

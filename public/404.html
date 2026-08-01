@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Angano — page introuvable</title>
+    <meta name="robots" content="noindex" />
+    <!--
+      This file exists for what it does to *missing assets*, not for what it shows.
+
+      Without it the host answers any unknown path with the app's own index.html and a
+      200 — so a missing image is not a 404 anywhere: not in the console, not in a
+      status check, not in a log. It gets worse than invisible: `_headers` marks
+      /assets/* as immutable for a year, and that rule matches the *path*, so the
+      first visitor to load a not-yet-deployed image had that HTML cached on its URL
+      for a year. Deploying the file afterwards changed nothing for them, and nothing
+      for the edge node they went through.
+
+      That is exactly what happened to five power illustrations. With a real 404 the
+      failure is loud, uncacheable-by-accident, and fixed by deploying the file.
+
+      The game has no client-side routes, so nothing else relied on that fallback.
+    -->
+    <style>
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: #10131f; color: #e8ecff; font-family: system-ui, sans-serif; text-align: center; padding: 24px; }
+      h1 { font-size: 1.4rem; margin: 0 0 8px; }
+      p { color: #98a2c8; margin: 0 0 20px; }
+      a { color: #10131f; background: #8b6cff; text-decoration: none; font-weight: 700; padding: 12px 20px; border-radius: 12px; display: inline-block; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>Cette page n'existe pas</h1>
+      <p>Le sentier se perd dans la nuit.</p>
+      <a href="/">Retour au village</a>
+    </div>
+  </body>
+</html>

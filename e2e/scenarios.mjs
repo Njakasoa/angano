@@ -351,9 +351,7 @@ async function scMissionReview() {
  * and a mistyped art stem is invisible in the UI — it just renders nothing.
  */
 async function scAssets() {
-  const page = await mk();
-  await page.goto(URL, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brand");
+  const page = await open(await mk());
 
   await page.getByRole("button", { name: "Les rôles" }).click();
   await page.waitForSelector(".codex-tile");
@@ -444,7 +442,7 @@ async function scSameRoom() {
 /** Remote mode is the control: the same role reveal DOES speak on a player's device. */
 async function scRemoteAudio() {
   const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"], sameRoom: false });
-  await sleep(1800);
+  await sleep(t(1800));
   const spokenOnPlayer = g.players.flatMap((p) => p.assets).filter((f) => f.startsWith("vo_"));
   ok("À distance, la voix off joue bien chez les joueurs", spokenOnPlayer.length > 0, `${spokenOnPlayer.length} clips`);
   await teardown();
@@ -489,7 +487,7 @@ async function scPack() {
   }
   const heard = () => [...g.players, g.host].flatMap((p) => p.assets).filter((f) => f.startsWith(prefix));
 
-  await sleep(2500);
+  await sleep(t(2500));
   const prose = heard().filter((f) => f.includes("_prose_"));
   ok("La prose de la légende est jouée depuis le pack", prose.length > 0,
     prose.length ? prose.slice(0, 3).join(", ") : "aucune — le texte du serveur ne correspond plus au pack");
@@ -497,6 +495,10 @@ async function scPack() {
   const r = await driveToFinish(g, { vote: "village", ombiasy: "skip" });
   ok("Partie menée à son terme", !!r.winner, `winner=${r.winner}`);
 
+  // The verdict cue is requested at the same instant the finish screen appears, so
+  // against a remote host it is still in flight when the game is already over. What
+  // is being asserted is what the browser fetched — give the fetch its beat.
+  await sleep(t(1500));
   const cues = heard().filter((f) => /_(aube|reveal|vote|razana)_/.test(f));
   ok("Les répliques d'événement sont jouées", cues.length > 0, [...new Set(cues)].slice(0, 4).join(", "));
 

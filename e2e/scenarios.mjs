@@ -6,8 +6,24 @@
 //
 // Run: requires core-api (:3000) + the Vite dev server (:5173) up.
 //   ANGANO_URL=http://localhost:5173 node scenarios.mjs
+//
+// Pointed at the deployed site it is the same suite, only slower: a real server writes
+// the legend with a real AI (~30 s), and a real network drops a page load now and then.
+// Hence SLOW and the one retry below — without them the suite fails on latency and
+// blames the game.
+//   ANGANO_URL=https://angano.njakasoa.xyz node scenarios.mjs
 import { chromium } from "playwright";
 const URL = process.env.ANGANO_URL || "http://localhost:5173";
+/** Timeout multiplier: 1 against a dev server, wider against anything remote. */
+const SLOW = Number(process.env.ANGANO_SLOW) || (/^https?:\/\/(localhost|127\.0\.0\.1)/.test(URL) ? 1 : 4);
+const t = (ms) => ms * SLOW;
+/**
+ * How long the prep screen may last before roles are dealt. The legend is written
+ * server-side first, and on the live server that is a real AI call — measured at ~30 s,
+ * every game. It is not latency and it is not a bug, so it gets its own budget rather
+ * than failing the run under a generic timeout.
+ */
+const PREP_TIMEOUT = Number(process.env.ANGANO_PREP_MS) || t(20000);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const NAME2ROLE = { "Mponina": "mponina", "Songomby": "songomby", "Mpisikidy": "mpisikidy", "Ombiasy": "ombiasy", "Fanany": "fanany", "Zazavavindrano": "zazavavindrano", "Kalanoro": "kalanoro", "Kinoly": "kinoly", "Mpamosavy": "mpamosavy" };
 const SONGOMBY_TEAM = new Set(["songomby", "mpamosavy"]);
@@ -48,9 +64,30 @@ async function mk() {
   return page;
 }
 
+/**
+ * Load the app and wait for the menu.
+ *
+ * One retry, because against a deployed site a cold load does occasionally hang past
+ * the default 30 s while the host answers other requests in 200 ms. A run that dies
+ * there reports nothing about the game, which is the worst possible outcome for a
+ * test suite pointed at production.
+ */
+async function open(page) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.goto(URL, { waitUntil: "domcontentloaded", timeout: t(30000) });
+      await page.waitForSelector(".brand", { timeout: t(15000) });
+      return page;
+    } catch (e) {
+      if (attempt) throw e;
+      console.log(`   ↻ chargement repris (${String(e.message).split("\n")[0]})`);
+    }
+  }
+}
+
 async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace = "rapide", theme = true, sameRoom = false }) {
   const host = await mk();
-  await host.goto(URL, { waitUntil: "domcontentloaded" }); await host.waitForSelector(".brand");
+  await open(host);
   await host.fill('input[placeholder="Ton pseudo"]', "Narr");
   await host.getByRole("button", { name: "Créer une partie" }).click();
   await host.waitForSelector(".code"); await sleep(250);
@@ -69,7 +106,7 @@ async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace
   }
   const players = [];
   for (let i = 1; i <= nPlayers; i++) {
-    const p = await mk(); await p.goto(URL, { waitUntil: "domcontentloaded" }); await p.waitForSelector(".brand");
+    const p = await open(await mk());
     await p.fill('input[placeholder="Ton pseudo"]', "J" + i);
     await p.fill('input[placeholder^="Code"]', code);
     await p.getByRole("button", { name: "Rejoindre" }).click(); await p.waitForSelector(".players");
@@ -77,7 +114,7 @@ async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace
   }
   await sleep(500);
   await host.getByRole("button", { name: "Lancer la partie" }).click();
-  await host.waitForSelector(".screen.stage", { timeout: 15000 });
+  await host.waitForSelector(".screen.stage", { timeout: t(15000) });
   await sleep(1400);
   const roleByName = await readNarratorRoles(host);
   debug("roleByName", roleByName);
@@ -86,7 +123,7 @@ async function setup({ nPlayers, roles, songomby = 1, manualDeaths = false, pace
 }
 
 async function readNarratorRoles(host) {
-  await host.waitForSelector(".village .pcard .pc-role", { timeout: 8000 });
+  await host.waitForSelector(".village .pcard .pc-role", { timeout: PREP_TIMEOUT });
   const roleByName = {};
   const cards = host.locator(".village .pcard");
   const n = await cards.count();
@@ -100,8 +137,8 @@ async function readNarratorRoles(host) {
 }
 
 async function assertStoryScreens(host, players) {
-  await host.waitForSelector(".nar-script .ns-title", { timeout: 8000 });
-  await host.waitForSelector(".mission-narrator", { timeout: 8000 });
+  await host.waitForSelector(".nar-script .ns-title", { timeout: t(8000) });
+  await host.waitForSelector(".mission-narrator", { timeout: t(8000) });
   const title = await txt(host.locator(".nar-script .ns-title").first());
   if (!title.trim()) throw new Error("story title missing on narrator screen");
   const missionCount = await host.locator(".mission-card").count();
@@ -152,7 +189,7 @@ async function drivePlayer(p, mode, voteName) {
   }
   await targets.first().click().catch(() => {});
 }
-async function driveToFinish({ host, players, roleByName }, mode, maxMs = 70000) {
+async function driveToFinish({ host, players, roleByName }, mode, maxMs = t(70000)) {
   const t0 = Date.now(); let fananyMarkSeen = false; let fananyRevengeSeen = false; let healSeen = false; let lastLog = ""; let lastNt = ""; let heldFor = 0; let advancedFor = "";
   while (Date.now() - t0 < maxMs) {
     const logText = await txt(host.locator(".nar-log"));
@@ -280,12 +317,12 @@ async function scMissionReview() {
   // 1) a player requests validation → button disables
   const p1 = pageForRole(g, "mpisikidy") || g.players[0];
   const reqBtn = p1.getByRole("button", { name: /Demander validation/ });
-  await reqBtn.waitFor({ timeout: 8000 });
+  await reqBtn.waitFor({ timeout: t(8000) });
   await reqBtn.click(); await sleep(400);
   ok("Joueur : 'Demande envoyée au narrateur' (bouton désactivé)", (await p1.locator(".mission-review button[disabled]").count()) > 0);
 
   // 2) narrator sees the badge + the highlighted, opened request card
-  await g.host.waitForSelector(".mission-requests-bar.active", { timeout: 8000 });
+  await g.host.waitForSelector(".mission-requests-bar.active", { timeout: t(8000) });
   const badge = (await txt(g.host.locator(".mission-requests-bar.active .mission-badge"))).trim();
   ok("Narrateur : badge 'Demandes à traiter (1)'", badge === "1", `badge=${badge}`);
   ok("Narrateur : carte demande surlignée et ouverte", (await g.host.locator(".mission-card.req[open]").count()) > 0);
@@ -299,9 +336,9 @@ async function scMissionReview() {
   // 4) refuse path → player sees 'Refusée' and can re-request
   const p2 = pageForRole(g, "ombiasy") || g.players[1];
   const reqBtn2 = p2.getByRole("button", { name: /Demander validation/ });
-  await reqBtn2.waitFor({ timeout: 8000 });
+  await reqBtn2.waitFor({ timeout: t(8000) });
   await reqBtn2.click(); await sleep(400);
-  await g.host.waitForSelector(".mission-card.req", { timeout: 8000 });
+  await g.host.waitForSelector(".mission-card.req", { timeout: t(8000) });
   await g.host.locator(".mission-card.req").getByRole("button", { name: "Refuser" }).first().click();
   await sleep(500);
   ok("Refuser → joueur voit 'Refusée' et peut redemander",
@@ -421,6 +458,12 @@ const DEFAULT_PRESET = "lac-jarres-blanches";
  * Set ANGANO_STORY_PRESET on the *server* to pick which legend is told, and the same
  * value here so the scenario knows which files to listen for; both packs are covered
  * by running the suite twice.
+ *
+ * The server has the last word, though: with the AI story enabled it writes a legend
+ * of its own, which carries no id and therefore gets no pack — by design, since
+ * recorded prose over a different legend is worse than none. So the story the server
+ * actually told is read off the page (`data-story-id`) before anything is asserted.
+ * Blaming the pack for a legend it was never meant to cover would be a false alarm.
  */
 async function scPack() {
   const preset = process.env.ANGANO_STORY_PRESET?.trim() || DEFAULT_PRESET;
@@ -431,6 +474,13 @@ async function scPack() {
   }
   console.log(`   (légende : ${preset} → ${prefix}*)`);
   const g = await setup({ nPlayers: 5, roles: ["mpisikidy", "ombiasy"], theme: true });
+
+  const told = await g.host.locator(".nar-script").first().getAttribute("data-story-id").catch(() => null);
+  if (told !== preset) {
+    console.log(`⏭  pack — le serveur raconte ${told ? `« ${told} »` : "une légende écrite par l'IA"}, pas « ${preset} » : aucun pack ne s'y applique`);
+    await teardown();
+    return;
+  }
   const heard = () => [...g.players, g.host].flatMap((p) => p.assets).filter((f) => f.startsWith(prefix));
 
   await sleep(2500);
@@ -455,9 +505,11 @@ async function scPack() {
 async function main() {
   browser = await chromium.launch();
   const allScs = [["villageWin", scVillageWin], ["songombyWin", scSongombyWin], ["fananyMark", scFananyMark], ["witchHeal", scWitchHeal], ["missionReview", scMissionReview], ["reconnect", scReconnect], ["rematch", scRematch], ["manualDeaths", scManualDeaths], ["assets", scAssets], ["sameRoom", scSameRoom], ["remoteAudio", scRemoteAudio], ["pack", scPack]];
-  const filter = process.env.SCENARIO;
-  const scs = filter ? allScs.filter(([name]) => name === filter) : allScs;
-  if (!scs.length) throw new Error(`Unknown scenario: ${filter}`);
+  // SCENARIO takes a list, so a run against the live site can pick the handful worth
+  // the wall-clock instead of all twelve.
+  const filter = process.env.SCENARIO?.split(",").map((s) => s.trim()).filter(Boolean);
+  const scs = filter?.length ? allScs.filter(([name]) => filter.includes(name)) : allScs;
+  if (!scs.length) throw new Error(`Unknown scenario: ${process.env.SCENARIO}`);
   for (const [name, fn] of scs) {
     console.log(`\n=== ${name} ===`);
     try { await fn(); } catch (e) { console.log(`❌ ${name} a crashé: ${e.message}`); results.push([name, false]); await teardown(); }

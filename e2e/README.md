@@ -42,14 +42,34 @@ node scenarios.mjs    # 9 scénarios navigateur jusqu'à la fin
 
 # ou tout :
 npm test
+
+# un seul scénario, ou quelques-uns :
+SCENARIO=assets node scenarios.mjs
+SCENARIO=villageWin,assets,pack node scenarios.mjs
 ```
 
 URLs surchargeables : `ANGANO_API` (défaut `http://localhost:3000`), `ANGANO_URL` (défaut `http://localhost:5173`).
 
+## Contre le site déployé
+
+```bash
+npm run test:live     # protocoles + villageWin, assets, pack sur angano.njakasoa.xyz
+```
+
+C'est la même suite ; ce qui change est le temps. Un vrai serveur écrit la légende avec
+une vraie IA (~30 s mesurées), et un vrai réseau rate un chargement de page de temps en
+temps. `scenarios.mjs` en tient compte tout seul : dès que l'URL n'est pas locale, tous
+ses délais sont multipliés par **4** (`ANGANO_SLOW` pour forcer la valeur), l'attente de
+la légende a son propre budget (`ANGANO_PREP_MS`), et un chargement raté est repris une
+fois. Sans ça la suite échoue sur la latence et accuse le jeu.
+
+Complément indispensable côté visuels : `bun run check:live` à la racine, qui interroge
+la prod fichier par fichier et dit quel commit y est déployé.
+
 ## Scénarios navigateur couverts (`scenarios.mjs`)
 Victoire **Village**, victoire **Songomby** (parité), **Marque funeste du Fanany**, **soin** de l'Ombiasy,
 **demande de validation de mission**, **reconnexion** (rechargement de page → retour en partie),
-**rematch** (2 parties), **morts annoncées par le narrateur**, **mode salon** (rythme narrateur + retour arrière + un seul haut-parleur, avec son contrôle à distance), **pack de narration** (même `ANGANO_STORY_PRESET` côté serveur et côté suite — `lanternes-mangrove` ou `barriere-rompue` ; une autre valeur saute proprement le scénario), et **assets** (galerie des pouvoirs du
+**rematch** (2 parties), **morts annoncées par le narrateur**, **mode salon** (rythme narrateur + retour arrière + un seul haut-parleur, avec son contrôle à distance), **pack de narration** (régler `ANGANO_STORY_PRESET` côté serveur impose cette légende — sans appel IA — et la même valeur côté suite dit quels fichiers écouter ; le scénario saute proprement si le serveur raconte autre chose, une histoire IA n'ayant pas d'`id` et donc aucun pack), et **assets** (galerie des pouvoirs du
 codex + aucune image en 404 sur une partie complète — l'art est adressé par une clé venue du serveur,
 donc une clé morte ne se voit qu'à l'écran, jamais dans la console).
 Chaque scénario pilote plusieurs onglets (1 narrateur + N joueurs) via la god-view et joue jusqu'à l'écran de fin.

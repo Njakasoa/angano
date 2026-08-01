@@ -10,7 +10,8 @@
     "voice": "bun voice.ts",
     "scenarios": "node scenarios.mjs",
     "test:proto": "bun smoke.ts && bun reconnect.ts && bun story.ts && bun voice.ts",
-    "test": "bun smoke.ts && bun reconnect.ts && bun story.ts && bun voice.ts && node scenarios.mjs"
+    "test": "bun smoke.ts && bun reconnect.ts && bun story.ts && bun voice.ts && node scenarios.mjs",
+    "test:live": "ANGANO_API=${ANGANO_API:-https://api.njakasoa.xyz} ANGANO_URL=${ANGANO_URL:-https://angano.njakasoa.xyz} sh -c 'bun smoke.ts && bun reconnect.ts && bun story.ts && bun voice.ts && SCENARIO=villageWin,assets,pack node scenarios.mjs'"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

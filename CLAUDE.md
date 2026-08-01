@@ -44,6 +44,35 @@ deux vérificateurs : une clé ajoutée d'un côté est vérifiée des deux.
 > c'est une erreur maintenant, et l'écart entre le dépôt et le déploiement se lit en une
 > commande.
 
+### Le piège du cache : un asset manquant se grave pour un an
+
+`public/_headers` marque `/assets/*` en `immutable, max-age=31536000`, et cette règle
+porte sur le **chemin**, pas sur le fichier. Tant que l'hôte répondait à un chemin
+inconnu par l'`index.html` de l'app, la première visite d'un asset non encore déployé
+mettait cette page HTML en cache **sur son URL, pour un an** — chez ce visiteur et sur
+son nœud de bord. Déployer le fichier ensuite n'y changeait rien : du point de vue du
+CDN, l'URL était correcte et fraîche.
+
+C'est arrivé à 72 fichiers d'un coup. Deux garde-fous depuis :
+
+- **`public/404.html`** — sa seule raison d'être est de faire répondre un vrai 404 aux
+  chemins inconnus. Ne pas le supprimer : le jeu n'a aucune route côté client, rien
+  d'autre ne dépendait de ce repli.
+- **`check:live` sonde deux fois**, une fois normalement et une fois derrière le cache,
+  et distingue « jamais déployé » de « déployé, mais le CDN sert l'ancienne réponse ».
+  Le second ne se règle que par une purge Cloudflare — jamais par un redéploiement.
+
+## Déploiement
+
+Les deux dépôts se déploient **automatiquement au push sur `main`** : le front sur
+Cloudflare Pages, core-api par son timer de mise à jour (`deploy/update-core-api.sh`).
+Vérifier après coup avec `bun run check:live`, qui lit le commit réellement en ligne.
+
+Côté core-api, l'environnement du conteneur est une **liste explicite** dans
+`deploy/docker-compose.prod.yml` : une variable posée dans le `.env` de prod sans être
+listée là n'atteint jamais l'API. C'est pour ça que `ELEVENLABS_*` ne fait rien en
+production aujourd'hui.
+
 ## Son
 
 `src/audio/engine.ts` — trois bus (`music` bouclé, `sfx` polyphonique, `voice`

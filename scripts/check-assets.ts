@@ -5,75 +5,46 @@
  *
  * Most art and audio is addressed by a *key* the API sends, not by an import, so
  * nothing in the bundle ever mentions the file — a rename or a typo used to surface
- * only as a blank banner or silence in production, with nothing in the console. This
- * closes that gap:
+ * only as a blank banner or silence in production, with nothing in the console.
  *
- *   - **error** — a music key whose whole fallback chain is missing (that phase
- *     would be silent), or a role/power image that does not exist.
- *   - **warning** — a not-yet-produced sfx or voice line. The engine handles these
- *     gracefully, so they must not block a build; `generate-audio.ts` fills them in.
+ * What counts as an error lives in `asset-inventory.ts`, next to the list itself, so
+ * that this script and `check-live.ts` cannot disagree about what a healthy build
+ * looks like. This one adds the checks that only make sense on the source: a pack's
+ * text has to survive the trip to the recording booth.
  */
 import { access } from "node:fs/promises";
-import { MUSIC, SFX, VOICE } from "../src/audio/manifest.ts";
-import { ROLES } from "../src/core/roles.ts";
-import { FOLEY, PACKS } from "./audio-plan.ts";
+import {
+  foleyAssets, imageAssets, musicChains, oneShotAssets, packAssets, type AssetRef,
+} from "./asset-inventory.ts";
+import { PACKS } from "./audio-plan.ts";
 
-const AUDIO = new URL("../public/assets/audio/", import.meta.url).pathname;
-const IMAGES = new URL("../public/assets/images/", import.meta.url).pathname;
+const ASSETS = new URL("../public/assets/", import.meta.url).pathname;
 
 const exists = (path: string) => access(path).then(() => true, () => false);
 
 const errors: string[] = [];
 const warnings: string[] = [];
 
-/** Scene art the client references directly (the API sends these stems too). */
-const SCENE_IMAGES = [
-  "scene_menu", "scene_aube", "scene_debat", "scene_vote",
-  "scene_victory_village", "scene_victory_songomby",
-];
-/** Brand assets stay PNG — favicons and social scrapers consume them, not players. */
-const BRAND_IMAGES = ["brand_icon", "brand_og"];
+/** Route a missing file to the bucket the inventory picked for it. */
+function report(ref: AssetRef, detail: string) {
+  (ref.severity === "error" ? errors : warnings).push(`${ref.label} — ${detail}`);
+}
 
 async function main() {
-  // ── music: every key needs at least one file in its chain ──
-  for (const [key, candidates] of Object.entries(MUSIC)) {
+  // ── files, by severity ──
+  for (const ref of [...imageAssets(), ...foleyAssets(), ...oneShotAssets(), ...packAssets()]) {
+    if (!(await exists(ASSETS + ref.path))) report(ref, `${ref.path.split("/").pop()} absent`);
+  }
+
+  // ── music: a key resolves as long as one file in its chain does ──
+  for (const chain of musicChains()) {
     const found = [];
-    for (const file of candidates) if (await exists(AUDIO + file)) found.push(file);
-    if (!found.length) errors.push(`music "${key}" — aucun fichier (${candidates.join(", ")}) → phase muette`);
-    else if (found[0] !== candidates[0]) warnings.push(`music "${key}" — repli sur ${found[0]} (${candidates[0]} pas encore produit)`);
+    for (const file of chain.files) if (await exists(`${ASSETS}audio/${file}`)) found.push(file);
+    if (!found.length) errors.push(`music "${chain.key}" — aucun fichier (${chain.files.join(", ")}) → phase muette`);
+    else if (found[0] !== chain.files[0]) warnings.push(`music "${chain.key}" — repli sur ${found[0]} (${chain.files[0]} pas encore produit)`);
   }
 
-  // ── foley night beds: warn only ──
-  // They sit in front of the composed beds in the chain, so an unproduced one falls
-  // back to its music rather than to silence. That is exactly why the `soundscape`
-  // option could ship before the audio did.
-  for (const f of FOLEY) {
-    if (!(await exists(AUDIO + f.file))) warnings.push(`foley "${f.key}" — ${f.file} absent, repli sur le lit musical`);
-  }
-
-  // ── one-shots and static voice: missing is tolerated, just report it ──
-  for (const [key, candidates] of Object.entries(SFX)) {
-    if (!(await exists(AUDIO + candidates[0]!))) warnings.push(`sfx "${key}" — ${candidates[0]} absent`);
-  }
-  for (const [key, candidates] of Object.entries(VOICE)) {
-    if (!(await exists(AUDIO + candidates[0]!))) warnings.push(`voix "${key}" — ${candidates[0]} absent`);
-  }
-
-  // ── images: a missing background-image fails silently, so treat it as an error ──
-  for (const role of Object.values(ROLES)) {
-    if (!(await exists(`${IMAGES}${role.asset}.webp`))) errors.push(`role "${role.id}" — ${role.asset}.webp absent`);
-    for (const power of role.powers ?? []) {
-      if (!(await exists(`${IMAGES}${power.art}.webp`))) warnings.push(`pouvoir "${power.art}.webp" absent (${role.id} — codex incomplet)`);
-    }
-  }
-  for (const stem of SCENE_IMAGES) {
-    if (!(await exists(`${IMAGES}${stem}.webp`))) errors.push(`scène "${stem}.webp" absente`);
-  }
-  for (const stem of BRAND_IMAGES) {
-    if (!(await exists(`${IMAGES}${stem}.png`))) errors.push(`marque "${stem}.png" absente`);
-  }
-
-  // ── recorded narration packs ──
+  // ── recorded narration packs: the text, not just the files ──
   // A recording cannot interpolate, so a stray placeholder means a line that would be
   // spoken literally as "{victim}". Packs share one audio directory, so a copy-pasted
   // file prefix would have one legend quietly playing the other's lines: collisions
@@ -91,15 +62,11 @@ async function main() {
 
   const seen = new Map<string, string>();
   for (const pack of PACKS) {
-    // A line with no file is *not* broken: `proseFile` returns nothing and the browser
-    // falls back to the runtime voice, or to text. It is a production gap, and the
-    // triage loop — listen, delete what does not work, re-record — lives entirely in
-    // that gap, so it must not stop a build. A pack with *nothing* recorded is a
-    // different animal: that means the id is wrong, and no line will ever be found.
+    // A pack with *nothing* recorded is a different animal from a pack with gaps:
+    // that means the id is wrong, and no line will ever be found.
     let recorded = 0;
     for (const line of pack.lines) {
-      if (await exists(AUDIO + line.file)) recorded++;
-      else warnings.push(`pack "${pack.id}" — ${line.file} à générer (${line.label})`);
+      if (await exists(`${ASSETS}audio/${line.file}`)) recorded++;
       if (/\{[a-zA-Z_]+\}/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} contient un placeholder, impossible à enregistrer`);
       if (/\[[^\]]*\]/.test(line.text)) errors.push(`pack "${pack.id}" — ${line.label} : une balise dans "text" ferait échouer l'appariement`);
       if (line.direction) {
